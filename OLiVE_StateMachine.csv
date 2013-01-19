@@ -1,0 +1,24 @@
+Current State,Entry Message,Entry Actions,Input,Next State,Output,Info
+Boiler-off/empty,i/The olive press does not have power!,,"shovel_coal, hammer_coal",Boiler-off/loaded,-,
+,,,hand_valve,-,-,Boiler is not working yet
+Boiler-off/loaded,Great! The boiler's funrnase is being loaded with coal,loading_boiler,shovel_coal,-,-,"The boiler has enough coal, no need to load more"
+,,,hand_valve,,,"The steam has not reached enough pressure (2,500psi)"
+,,,lighter_coalfurnace,Boiler-on,lighting_furnace,
+Boiler-on,Good! You have started up the fire in the boiler's furnace,increasing_pressure; starting_timer,shovel_coal,-,-,"Boiler has enough pressure, no need for more coal"
+,,,lighter_coalfurnace,-,-,The furnace is already loaded and burning
+,,,10_mins_later,Boiler-low-pressure,-,
+,,,hand_valve,Engine-on,turning_valve_on,
+Boiler-low-pressure,a/Beware! Boiler pressure is low,error_low_pressure; dropping_pressure,after_5_mins,-,dropping_pressure,a/Danger! Boiler pressure is very low
+,,,after_10_mins,Boiler-on/empty,stopping_timer,
+,,,shovel_coal,Boiler-on,stopping_timer,i/Good! Steam supply is back to normal; The boiler needs coal quite often to keep it running
+,,,turn_valve_boiler,-,-,Steam supply is already on
+Boiler-on/empty,The engine stopped working due to inadequate steam pressure!,stoping_engine; dropping_pressure,shovel_coal,-,-,You need to turn the valve off first
+,,,hand_valve,Boiler-off/empty,turning_valve_off,
+Engine-on,Good! You started steam supply to the engine,increasing_pressure; starting_timer,shovel_coal,-,-,"Boiler has enough pressure, no need for more coal"
+,,,hand_valve,-,-,Steam supply is already on
+,,,10_mins_later,Boiler-low-pressure,-,
+,,,,,,
+,,,,,,
+,,,,,,
+,,,,,,
+,,,,,,
