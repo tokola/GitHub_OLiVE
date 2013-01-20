@@ -11,11 +11,11 @@ class StateMachine ():
 		self.inputs = {}	#stores inputs from different players
 		self.log = {}
 
-	def add_state(self, state, handler, actions=[], message=None, end_state=0):
+	def add_state(self, state, handler, end_state=0):
 		state = upper(state)
 		self.handlers[state] = handler
-		self.actions[state] = actions
-		self.messages[state] = message
+#		self.actions[state] = actions
+#		self.messages[state] = message
 		if end_state:
 			self.endStates.append(state)
 
@@ -33,7 +33,7 @@ class StateMachine ():
 			
 		# This is the callback of the function passed when loading the state machine
 		# cargo is used to carry a tuple with actions and messages (<actionList>, <message>)
-		(newState, cargo) = handler(eInput)
+		(newState, cargo) = handler(self.currentState, eInput)
 		(actions, message) = cargo
 		# make a list of message if the message received is a string
 		if not isinstance(message, list):
@@ -47,7 +47,7 @@ class StateMachine ():
 			else: #update current state and execute entry conditions
 				self.currentState = upper(newState)
 				handler = self.handlers[self.currentState]
-				cargo = (self.actions[self.currentState], self.messages[self.currentState])
+				(voidState, cargo) = handler(self.currentState, 'entry')
 				# append entry actions to the ones triggered by the state change
 				actions = actions + cargo[0]
 				# don't display entry message if there is already defined by state change (2 messages already)

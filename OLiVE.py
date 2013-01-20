@@ -1,6 +1,7 @@
 ﻿import viz
 import vizact
 import vizjoy
+from string import upper
 import Factory
 #import Machinery
 import Interaction
@@ -138,33 +139,49 @@ def parseLogFile (parser):
 ##############################
 
 def loadStateMachine():
-	global fsm, fsm_dict
+	global fsm, steamSM
 	
 	fsm = StateMachine.StateMachine()
 	
 	#load state machine from an external file
-	fsm_dict = {}
+	steamSM = {}
 	file = open('OLiVE_StateMachine.txt', 'r')
 	l = 0
+	#dictionary with states: {<state>:{'func':<function>, 'inputs':{'entry':{'output':[<actions>], 'info':[<messages>]}
+	#															   {<input1>:{'output':[<actions>], 'info':[<messages>]}
 	for line in file:
 		l = l + 1
 		if l == 1: continue	#skip the title line
 		stateData = line.split('\t')
-		state = stateData[0]
+		state = upper(stateData[0])
 		if state != '':
-			data = dict(func=stateData[1], entryM=stateData[2].split('; '), entryA=stateData[3].split('; '))
-			fsm_dict[state] = data
-			if fsm_dict[state]['entryA'] == ['']: del fsm_dict[state]['entryA'][0]
-			if fsm_dict[state]['entryM'] == ['']: del fsm_dict[state]['entryM'][0]
-			fsm.add_state(state, eval(data['func']), data['entryA'], data['entryM'])
-	print fsm_dict
+#			data = dict(func=stateData[1], entryM=stateData[2].split('; '), entryA=stateData[3].split('; '))
+			data = dict(func=stateData[1], inputs={})
+			steamSM.setdefault(state, data)
+#			if steamSM[state]['entryA'] == ['']: del steamSM[state]['entryA'][0]
+#			if steamSM[state]['entryM'] == ['']: del steamSM[state]['entryM'][0]
+			fsm.add_state(state, eval(data['func']))
+			#set the inputs subdictionary with: input:{next state, output, info}
+			mes = stateData[7]
+			if mes == ['']: 
+				del mes[0]
+			else:
+				if '"' in mes:
+					mes = eval(mes)
+			if stateData[5] == '':
+				stateData[5] = None
+			inputs = dict(next=stateData[5], output=stateData[6].split('; '), info=mes.split('; '))
+			if inputs['output'] == ['']: del inputs['output'][0]
+#			steamSM[state].setdefault('inputs', {})
+			steamSM[state]['inputs'][stateData[4]] = inputs
+	print steamSM
 	file.close()
 	#load state machine manually
-	fsm.add_state("Boiler-off/empty", Boiler_empty, [], ["a/The olive press does not have power!"])
-	fsm.add_state("Boiler-off/loaded", Boiler_loaded, ['loading_boiler'], ["i/Great! The boiler is being loaded with coal"])
-	fsm.add_state("Boiler-on", Boiler_working, ['increasing_pressure', 'starting_timer'], ["i/Good! You started steam supply to the engine"])
-	fsm.add_state("Boiler-low-pressure", Boiler_pressure, ['dropping_pressure', 'error-low-pressure'], ["a/Beware! Boiler pressure is low"])
-	fsm.add_state("Boiler-on/empty", Boiler_on_empty, ['dropping_pressure', 'stopping_engine'], ["a/The boiler stopped working due to inadequate steam pressure!"])
+#	fsm.add_state("Boiler-off/empty", Boiler_empty, [], ["a/The olive press does not have power!"])
+#	fsm.add_state("Boiler-off/loaded", Boiler_loaded, ['loading_boiler'], ["i/Great! The boiler is being loaded with coal"])
+#	fsm.add_state("Boiler-on", Boiler_working, ['increasing_pressure', 'starting_timer'], ["i/Good! You started steam supply to the engine"])
+#	fsm.add_state("Boiler-low-pressure", Boiler_pressure, ['dropping_pressure', 'error-low-pressure'], ["a/Beware! Boiler pressure is low"])
+#	fsm.add_state("Boiler-on/empty", Boiler_on_empty, ['dropping_pressure', 'stopping_engine'], ["a/The boiler stopped working due to inadequate steam pressure!"])
 	# set start and end states
 	fsm.add_state("Idle", idle)
 	fsm.add_state("game finished", None, end_state=True)
@@ -173,9 +190,19 @@ def loadStateMachine():
 
 vizact.onkeydown('m', loadStateMachine)
 
-def idle (args):
+def idle (*args):
 	print "Game started!"
 	return 'Boiler-off/empty', ([], None)
+
+def Steam_Prod (state, inp):
+	global steamSM
+	
+	print "State:",state,"Input:",inp 
+	output = steamSM[state]['inputs'][inp]['output']
+	info   = steamSM[state]['inputs'][inp]['info']
+	nextSt = steamSM[state]['inputs'][inp]['next']
+	print nextSt, (output, info)
+	return nextSt, (output, info)
 	
 def Boiler_empty (*args):
 	# If all args are received this is the entry condition of the state
@@ -194,7 +221,6 @@ def Boiler_empty (*args):
 		mes = "You need someone to shovel the coal as well (doh!)"
 		return None, ([], [mes])
 	return None, ([], None)
-		
 			
 def Boiler_loaded (*args):
 	mInput = args[0]

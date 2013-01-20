@@ -315,7 +315,6 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def BroadcastActionsMessages (self, acts, mess):
 		#check if the message is a local (user-only) or global message (all users)
 		for m in mess:
-			print "MESSSSSAGE:",m
 			if m == None:
 				continue
 			if m.rpartition('/')[1] == '':

@@ -26,8 +26,6 @@ class FSM_Actions ():
 		for action in actList:
 			if action == 'turning_valve_on':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_openValve, 3))
-				self._factory.factory.addAction(vizact.waittime(3))
-				self._factory.factory.addAction(vizact.call(self._factory.StartFactory))
 			elif action == 'turning_valve_off':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_closeValve, 3))
 			elif action == 'loading_boiler':
@@ -42,6 +40,9 @@ class FSM_Actions ():
 				viz.killtimer(10)
 				viz.killtimer(15)
 				viz.killtimer(20)
+			elif action == 'starting_engine':
+				self._factory.factory.addAction(vizact.waittime(3))
+				self._factory.factory.addAction(vizact.call(self._factory.StartFactory))
 			elif action == 'stopping_engine':
 				self._factory.StopFactory()
 				print "stop factory"

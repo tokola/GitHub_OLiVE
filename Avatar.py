@@ -10,12 +10,15 @@ class Avatar():
 		self._player_matrix = viz.Matrix() #self.view.getMatrix()
 		self._avatar = Robot.Steve()
 		self._avatar.disable([viz.INTERSECTION, viz.PICKING], op=viz.OP_ROOT)
+		self._avatar.head.setScale([2,2,2])
+		self._avatar.body_root.setScale([2,2,2])
 		#self._avatar.disable(viz.PHYSICS)
 		bodyColor = [float(c)/255 for c in color[0]]
 		shadeColor= [float(c)/255 for c in color[1]]
 		self._avatar.setBodyColor(bodyColor)
 		self._avatar.setShadeColor(shadeColor)
 		self._avatar.setTracker(self._player_matrix)
+		#self._avatar.setTracker(viz.link(self._avatar.body, viz.NullLinkable,offset=[0,-0.2,0]))
 		# add the representation on the map
 		self._mapAva = viz.addTexQuad(size=.75)
 		#self._mapAva = vizshape.addSphere(.5,10,10)
