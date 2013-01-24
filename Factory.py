@@ -18,7 +18,7 @@ class Factory ():
 	def __init__ (self):
 		self.factory = viz.add('models/factory.osgb')
 		self.toolsData = {'wrench': [[16.75,1.5,5],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
-				'hammer': [[16.75,1.5,4],[45,0,0], True]}
+				'hammer': [[16.75,1.5,4],[45,0,0], True], 'match':[[16.75,1.5,3.5],[45,0,0],True]}
 		self.machines = []
 		self.components = {}
 		self.componentPos = {}
