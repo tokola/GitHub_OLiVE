@@ -29,9 +29,11 @@ class FSM_Actions ():
 			elif action == 'turning_valve_off':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_closeValve, 3))
 			elif action == 'loading_boiler':
-				print "ACTION: shoveling coal"
-			elif action == 'increasing_pressure':
-				self._factory.boiler.increasePressure(220)
+				self._factory.boiler.openCloseHatch(True)
+				self._factory.factory.addAction(vizact.waittime(2))
+				self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 1))
+				self._factory.factory.addAction(vizact.waittime(1))
+				self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 2))
 			elif action == 'starting_timer':
 				viz.starttimer(10, 10, 0)
 				viz.starttimer(15, 15, 0)
@@ -41,10 +43,13 @@ class FSM_Actions ():
 				viz.killtimer(15)
 				viz.killtimer(20)
 			elif action == 'starting_engine':
-				self._factory.factory.addAction(vizact.waittime(3))
+				self._factory.factory.addAction(vizact.waittime(3))	#wait for valve animation
 				self._factory.factory.addAction(vizact.call(self._factory.StartFactory))
 			elif action == 'stopping_engine':
 				self._factory.StopFactory()
-				print "stop factory"
-			elif action == 'dropping_pressure':
-				print 'drop pressure'
+			elif 'pressure' in action:
+				pressure = action.rpartition('_')[2][:-3]
+				print 'pressure', pressure, action.rpartition('_')
+				self._factory.boiler.changePressure(int(pressure))
+			elif action == 'lighting_funrace':
+				self._factory.boiler.changePressure(180)

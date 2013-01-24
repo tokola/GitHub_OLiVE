@@ -162,18 +162,18 @@ def loadStateMachine():
 #			if steamSM[state]['entryM'] == ['']: del steamSM[state]['entryM'][0]
 			fsm.add_state(state, eval(data['func']))
 			#set the inputs subdictionary with: input:{next state, output, info}
-			mes = stateData[7]
+			mes = stateData[5]
 			if mes == ['']: 
 				del mes[0]
 			else:
 				if '"' in mes:
 					mes = eval(mes)
-			if stateData[5] == '':
-				stateData[5] = None
-			inputs = dict(next=stateData[5], output=stateData[6].split('; '), info=mes.split('; '))
+			if stateData[3] == '':
+				stateData[3] = None
+			inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=mes.split('; '))
 			if inputs['output'] == ['']: del inputs['output'][0]
 #			steamSM[state].setdefault('inputs', {})
-			steamSM[state]['inputs'][stateData[4]] = inputs
+			steamSM[state]['inputs'][stateData[2]] = inputs
 	print steamSM
 	file.close()
 	#load state machine manually
@@ -204,74 +204,74 @@ def Steam_Prod (state, inp):
 	print nextSt, (output, info)
 	return nextSt, (output, info)
 	
-def Boiler_empty (*args):
-	# If all args are received this is the entry condition of the state
-	# otherwise check the input for this state
-	mInput = args[0]
-	if mInput == 'shovel_coal':
-		mes = "You are shoveling coal in the boiler, which is necessary for its operation"
-		return 'Boiler-off/loaded', ([], [mes])
-	elif mInput == 'hand_valve':
-		mes = "The boiler is still empty, so there is no need to allow steam supply to the engine"
-		return None, ([], [mes])
+#def Boiler_empty (*args):
+#	# If all args are received this is the entry condition of the state
+#	# otherwise check the input for this state
+#	mInput = args[0]
 #	if mInput == 'shovel_coal':
-#		mes = "You need someone to hammer the coal as well (if that makes sense!)"
-		return None, ([], [mes])
-	if mInput == 'hammer_coal':
-		mes = "You need someone to shovel the coal as well (doh!)"
-		return None, ([], [mes])
-	return None, ([], None)
-			
-def Boiler_loaded (*args):
-	mInput = args[0]
-	if mInput == 'hand_valve':
-		mes = "This valve allows flow of steam from the boiler to the engine"
-		return 'Boiler-on', (['turning_valve_on'], [mes])
-	elif mInput == 'shovel_coal':
-		mes = "The steam pressure is in good levels, so you don't need to load more coal"
-		return None, ([], [mes])
-	return None, ([], None)
-
-def Boiler_working (*args):
-	mInput = args[0]
-	if mInput == 'hand_valve':
-		mes = "Steam supply is already on; you should better not turn off the engine!"
-		return None, ([], [mes])
-	elif mInput == 'shovel_coal':
-		mes = "Boiler has enough pressure, so you don't need to load more coal"
-		return None, ([], [mes])
-	elif mInput == '10_mins_later':
-		return 'Boiler-low-pressure', ([], None)
-	return None, ([], None)
-	
-def Boiler_pressure (*args):
-	mInput = args[0]
-	if mInput == 'hand_valve':
-		mes = "Steam supply is already on; you should better not turn off the engine!"
-		return None, ([], [mes])
-	elif mInput == 'shovel_coal':
-		mes = ["i/Good! Steam supply is back to normal", "The boiler needs coal quite often to keep it running"]
-		return 'Boiler-on', (['stopping_timer'], mes)
-	elif mInput == '15_mins_later':
-		mes = "a/Danger! Boiler pressure is very low which may lead to machine shutdown!"
-		return None, (['dropping_pressure'], [mes])
-	elif mInput == '20_mins_later':
-		return 'Boiler-on/empty', (['stopping_timer'], None)
-	return None, ([], None)
-	
-def Boiler_on_empty (*args):
-	mInput = args[0]
-	if mInput == 'hand_valve':
-		mes = "Good! You can now ignite the boiler again"
-		return 'Boiler-off/empty', (['turning_valve_off'], [mes])
-	elif mInput == 'shovel_coal':
-		mes = "You need to turn the vale off first before igniting the boiler"
-		return None, ([], [mes])
-	return None, ([], None)
-	
-def Engine_on (*args):
-	#Referenced as a callback in FSM file but not used in the scenario
-	pass
+#		mes = "You are shoveling coal in the boiler, which is necessary for its operation"
+#		return 'Boiler-off/loaded', ([], [mes])
+#	elif mInput == 'hand_valve':
+#		mes = "The boiler is still empty, so there is no need to allow steam supply to the engine"
+#		return None, ([], [mes])
+##	if mInput == 'shovel_coal':
+##		mes = "You need someone to hammer the coal as well (if that makes sense!)"
+#		return None, ([], [mes])
+#	if mInput == 'hammer_coal':
+#		mes = "You need someone to shovel the coal as well (doh!)"
+#		return None, ([], [mes])
+#	return None, ([], None)
+#			
+#def Boiler_loaded (*args):
+#	mInput = args[0]
+#	if mInput == 'hand_valve':
+#		mes = "This valve allows flow of steam from the boiler to the engine"
+#		return 'Boiler-on', (['turning_valve_on'], [mes])
+#	elif mInput == 'shovel_coal':
+#		mes = "The steam pressure is in good levels, so you don't need to load more coal"
+#		return None, ([], [mes])
+#	return None, ([], None)
+#
+#def Boiler_working (*args):
+#	mInput = args[0]
+#	if mInput == 'hand_valve':
+#		mes = "Steam supply is already on; you should better not turn off the engine!"
+#		return None, ([], [mes])
+#	elif mInput == 'shovel_coal':
+#		mes = "Boiler has enough pressure, so you don't need to load more coal"
+#		return None, ([], [mes])
+#	elif mInput == '10_mins_later':
+#		return 'Boiler-low-pressure', ([], None)
+#	return None, ([], None)
+#	
+#def Boiler_pressure (*args):
+#	mInput = args[0]
+#	if mInput == 'hand_valve':
+#		mes = "Steam supply is already on; you should better not turn off the engine!"
+#		return None, ([], [mes])
+#	elif mInput == 'shovel_coal':
+#		mes = ["i/Good! Steam supply is back to normal", "The boiler needs coal quite often to keep it running"]
+#		return 'Boiler-on', (['stopping_timer'], mes)
+#	elif mInput == '15_mins_later':
+#		mes = "a/Danger! Boiler pressure is very low which may lead to machine shutdown!"
+#		return None, (['dropping_pressure'], [mes])
+#	elif mInput == '20_mins_later':
+#		return 'Boiler-on/empty', (['stopping_timer'], None)
+#	return None, ([], None)
+#	
+#def Boiler_on_empty (*args):
+#	mInput = args[0]
+#	if mInput == 'hand_valve':
+#		mes = "Good! You can now ignite the boiler again"
+#		return 'Boiler-off/empty', (['turning_valve_off'], [mes])
+#	elif mInput == 'shovel_coal':
+#		mes = "You need to turn the vale off first before igniting the boiler"
+#		return None, ([], [mes])
+#	return None, ([], None)
+#	
+#def Engine_on (*args):
+#	#Referenced as a callback in FSM file but not used in the scenario
+#	pass
 	
 #######################
 ### INITIALIZE GAME ###

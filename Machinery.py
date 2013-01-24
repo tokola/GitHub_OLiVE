@@ -132,6 +132,11 @@ class Boiler ():
 	"""This is the Boiler class"""
 	def __init__(self, factory, pos):
 		self.object = factory.add('models/boiler.ive')
+		self.hatch = (self.object.getChild('HatchDoorL'), self.object.getChild('HatchDoorR'))
+		self.hatch[0].center(-.247, 1.494, -.253)
+		self.hatch[1].center(.536, 1.504, -.242)
+		self.coalLoad = self.object.getChild('coalLoad')
+		self.coalLoad.visible(0)
 		self.gauge = self.object.getChild('velona')
 		self.gauge.center(.25, 2.776, .248)
 		self.object.setPosition(pos)
@@ -145,7 +150,36 @@ class Boiler ():
 		boiPos = self.object.getPosition()
 		self.componentPos[coal] = [boiPos[0]+4.324/2, boiPos[1]+.792/2, boiPos[2]-1.034/2]
 		
-	def increasePressure(self, angle):
+	def changePressure(self, pressure):
 		self.gauge.endAction()
-		incPress = vizact.spinTo(euler=[0,0,angle], time=30, interpolate=vizact.easeInOut)
+		presToAngle = {4500: 270, 3000: 180, 1500: 90, 0:0}
+		angle = presToAngle[pressure]
+		ease = vizact.easeInOut
+		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
+		if angle == 270:
+			incPress = vizact.spinTo(euler=[0,0,-180], time=5, interpolate=vizact.easeIn)
+			self.gauge.addAction(incPress)
+			ease = vizact.easeOut
+		incPress = vizact.spinTo(euler=[0,0,-angle], time=5, interpolate=ease)
 		self.gauge.addAction(incPress)
+		
+	def openCloseHatch(self, open):	#open=True or False
+		angle = 120 * open
+		openLeft = vizact.spinTo(euler=[angle,0,0], time=2, interpolate=vizact.easeOut)
+		openRight = vizact.spinTo(euler=[-angle,0,0], time=2, interpolate=vizact.easeOut)
+		self.hatch[0].addAction(openLeft)
+		self.hatch[1].addAction(openRight)
+		
+	def coalAction(self, act):	#act=1->load, 2->light, 3->fire
+		if act == 1:
+			self.coalLoad.visible(1)
+		elif act == 2:
+			self.coalLoad.color(viz.RED)
+		elif act == 3:
+#			self.fire = self.object.addTexQuad()
+#			fire = viz.addTexture('textures/fire3.avi')
+#			self.fire.texture(fire)
+#			self.fire.billboard(viz.BILLBOARD_YAXIS)
+			fire = viz.add('textures/fire3.avi',loop=1,play=1)
+			self.fire = viz.addTexQuad(texture=fire, pos=[7.2,1.2,0], alpha=0.5)
+			
