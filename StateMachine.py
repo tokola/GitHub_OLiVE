@@ -83,12 +83,19 @@ class StateMachine ():
 		if len(self.inputs) > 1 and len(acts) > 0:
 			for p in self.inputs.keys():
 				if p != player:
-					p.BroadcastActionsMessages(None, mess)
+					actions = self.filterMultiActions(acts)
+					p.BroadcastActionsMessages(actions, mess)
 		# log the input of the player and the action performed
 		self.log_user_data(self.inputs, acts)	
 		# finally, return the actions,messages to the current player (last input)
 		return (acts, mess)
 	
+	def filterMultiActions(self, act):
+		#actions with * at the end will be broadcast to all players
+		acti = [a.split('*')[0] for a in act if '*' in a]
+		if len(acti) > 0:
+			return acti
+		
 	def log_user_data (self, user_input, actions):
 		for u, i in user_input.iteritems():
 			self.log.setdefault(u._name.getMessage(), []).append((i, actions, round(viz.tick(), 2)))

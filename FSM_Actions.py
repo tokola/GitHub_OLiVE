@@ -24,7 +24,14 @@ class FSM_Actions ():
 		if not ex: return
 		#action list
 		for action in actList:
-			if action == 'turning_valve_on':
+			if action == 'detaching_laval_belt':
+				self._factory.lavalL.detachBelt()
+			elif action == 'attaching_belt':
+				self._factory.lavalL.attachBelt()
+				print "selected", self._selected
+				if self._selected == 'belt':
+					self.DropObject(False)	#drop object without putting in back in place
+			elif action == 'turning_valve_on':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_openValve, 3))
 			elif action == 'turning_valve_off':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_closeValve, 3))
@@ -32,12 +39,12 @@ class FSM_Actions ():
 				self._factory.boiler.openCloseHatch(True)
 				self._factory.factory.addAction(vizact.waittime(2))
 				self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 1))
-				self._factory.factory.addAction(vizact.waittime(1))
-				self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 2))
+				#self._factory.factory.addAction(vizact.waittime(1))
+				#self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 2))
 			elif action == 'starting_timer':
-				viz.starttimer(10, 10, 0)
-				viz.starttimer(15, 15, 0)
-				viz.starttimer(20, 20, 0)
+				viz.starttimer(10, 10, 0)	#timer for the first warning
+				viz.starttimer(15, 15, 0)	#timer for the second warning
+				viz.starttimer(20, 20, 0)	#timer for stopping factory
 			elif action == 'stopping_timer':
 				viz.killtimer(10)
 				viz.killtimer(15)
@@ -48,8 +55,18 @@ class FSM_Actions ():
 			elif action == 'stopping_engine':
 				self._factory.StopFactory()
 			elif 'pressure' in action:
+				#get the pressure and send it as an argument to boiler
 				pressure = action.rpartition('_')[2][:-3]
-				print 'pressure', pressure, action.rpartition('_')
 				self._factory.boiler.changePressure(int(pressure))
-			elif action == 'lighting_funrace':
-				self._factory.boiler.changePressure(180)
+			elif action == 'lighting_furnace':	#coals appear inside furnace and light up
+				self._factory.boiler.coalAction(2)
+			elif action == 'dying_away_fire':	#fire dies away and coals are wasted
+				self._factory.boiler.coalAction(3)
+			elif action == 'exhausting_fire':	#fire dies away and coals are wasted
+				self._factory.boiler.coalAction(4)
+			# ALERTS ON MACHINERY
+			elif 'error' in action:
+				mach = action.partition('_')[2]
+				machPos = self._factory.machines[mach].object.getPosition()
+				errorCode = action.partition('_')[0][-1:]	#1=error on, 0=error off
+				self._mapWin.ShowErrorOnMap(mach, machPos, int(errorCode))

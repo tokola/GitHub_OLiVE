@@ -49,6 +49,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._window.ortho(-25,25,-15,20,-1,1)
 			self._view.setPosition(-3.8,0,0)
 			self._view.setEuler(0,90,0)
+			self._alerts = {}
 			self.AddMap()
 			#self.AddAvatars()
 		#set an update function to take care of window resizing (priority=0)
@@ -70,13 +71,21 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._alert.translate( [.03, .1] )
 		self._alertIcon = viz.add('textures/alert_icon.png')
 		self._infoIcon = viz.add('textures/info_icon.png')
-#		self._alert = viz.addText('', viz.ORTHO, self._window)
-#		self._alert.alignment(viz.ALIGN_LEFT_BOTTOM)
-#		self._alert.font("Segoe UI")
-#		self._alert.color(viz.BLACK)
-#		self._alert.fontSize(18)
-#		self._alert.resolution(.5)
-#		self._alert.setPosition(10, 10, 0)
+
+	def ShowErrorOnMap(self, machine, mPos, flag):
+		if flag == 0:	#remove error
+			if self._alerts.has_key(machine):
+				self._alerts[machine].remove()
+				del self._alerts[machine]
+		else:	#add new alert
+			#aPos = self._window.worldToScreen(mPos)
+			#newAlert = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=50, pos=aPos)
+			newAlert = viz.addTexQuad(size=1.25)
+			newAlert.texture(viz.addTexture('textures/alert_icon.png'))
+			newAlert.renderOnlyToWindows([self._window])
+			newAlert.setPosition(mPos[0], 0.5, mPos[2])
+			newAlert.setEuler(0, 90, 0)
+			self._alerts[machine] = newAlert
 		
 	def AddAvatars (self):
 		self.avatars = []
@@ -167,9 +176,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				else:
 					self.ResetPick()
 	
-	def WithinReach(self, obj, mach = False, dist = GRABDIST):
+	def WithinReach(self, obj, machPart = False, dist = GRABDIST):
 		# get the component position if it's a machine part
-		if mach:
+		if machPart:
 			objPos = self._factory.componentPos[obj]
 		else:
 			objPos = obj.getPosition(viz.ABS_GLOBAL)
@@ -287,7 +296,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		else:
 			pass
 
-	def DropObject (self):
+	def DropObject (self, putBack=True):
 		if self._holding != None:
 			if self._selected == 'hand':
 				print "Cannot drop my hand!"
@@ -295,8 +304,10 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			toolToDrop = self._selected
 			print "Dropped " + toolToDrop
 			self.LetObject()
+			self.ResetPick()
 			self.RemoveFromToolbox()
-			self.AddToWorld(toolToDrop)
+			if putBack:
+				self.AddToWorld(toolToDrop)
 		
 	def HideShowHUD (self):
 		self._hud.visible(viz.TOGGLE)

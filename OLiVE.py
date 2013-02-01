@@ -25,7 +25,7 @@ olivePress = Factory.Factory()
 def initialize ():
 	global floorMap
 	
-	olivePress.AddMachinery()
+	olivePress.AddMachinery('engine', 'boiler', 'laval') #, 'mill', 'pump', 'press')
 	olivePress.AddAllTools()
 	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
 
@@ -60,7 +60,7 @@ def splitViews ():
 	gPlayers[3] = {'player': p3, 'joy': j3, 'avatar': a3}
 	for p in gPlayers.values():
 		av = p['avatar']
-		av._avatar.renderToAllWindowsExcept([p['player']._window])
+		av._avatar.renderToAllWindowsExcept([p['player']._window, floorMap._window])
 		av._mapAva.renderOnlyToWindows([floorMap._window])
 	#p2.AddToToolbox('wrench')
 	#p2.AddToToolbox('hammer')
@@ -138,7 +138,42 @@ def parseLogFile (parser):
 ## STATES for STATE MACHINE ##
 ##############################
 
-def loadStateMachine():
+def loadStateMachineXl():
+	import xlrd	#load the library for reading Excel files
+	global fsm, steamSM
+	
+	fsm = StateMachine.StateMachine()
+	
+	#load state machine from an external file
+	steamSM = {}
+	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
+	#Get the first sheet in the workbook by index
+	sheet1 = workbook.sheet_by_name('FSM2')
+	#Get each row in the sheet as a list and print the list
+	r = 0
+	for rowNumber in range(sheet1.nrows):
+		r += 1
+		if r == 1: continue	#skip the title line
+		stateData = sheet1.row_values(rowNumber)
+		state = upper(stateData[0])
+		data = dict(func=stateData[1], inputs={})
+		steamSM.setdefault(state, data)
+		#load the states in the state machine
+		fsm.add_state(state, eval(data['func']))
+		#set the inputs subdictionary with: input:{next state, output, info}
+		if stateData[3] == '':
+			stateData[3] = None
+		inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=stateData[5].split('; '))
+		if inputs['output'] == ['']: del inputs['output'][0]
+		steamSM[state]['inputs'][stateData[2]] = inputs
+	#print steamSM
+	# set start and end states
+	fsm.add_state("Start", start)
+	fsm.add_state("game finished", None, end_state=True)
+	exec("fsm.set_start('START')")
+	#fsm.set_start('Idle')
+	
+def loadStateMachineTxt():
 	global fsm, steamSM
 	
 	fsm = StateMachine.StateMachine()
@@ -176,32 +211,31 @@ def loadStateMachine():
 			steamSM[state]['inputs'][stateData[2]] = inputs
 	print steamSM
 	file.close()
-	#load state machine manually
-#	fsm.add_state("Boiler-off/empty", Boiler_empty, [], ["a/The olive press does not have power!"])
-#	fsm.add_state("Boiler-off/loaded", Boiler_loaded, ['loading_boiler'], ["i/Great! The boiler is being loaded with coal"])
-#	fsm.add_state("Boiler-on", Boiler_working, ['increasing_pressure', 'starting_timer'], ["i/Good! You started steam supply to the engine"])
-#	fsm.add_state("Boiler-low-pressure", Boiler_pressure, ['dropping_pressure', 'error-low-pressure'], ["a/Beware! Boiler pressure is low"])
-#	fsm.add_state("Boiler-on/empty", Boiler_on_empty, ['dropping_pressure', 'stopping_engine'], ["a/The boiler stopped working due to inadequate steam pressure!"])
 	# set start and end states
-	fsm.add_state("Idle", idle)
+	fsm.add_state("Start", idle)
 	fsm.add_state("game finished", None, end_state=True)
-	exec("fsm.set_start('Idle')")
+	exec("fsm.set_start('Start')")
 	#fsm.set_start('Idle')
 
-vizact.onkeydown('m', loadStateMachine)
+vizact.onkeydown('m', loadStateMachineTxt)
 
-def idle (*args):
+def start (*args):
 	print "Game started!"
-	return 'Boiler-off/empty', ([], None)
+	#return 'Laval-belt-off', ([], None)
+	return 'Laval-belt-off', ([], None)
 
 def Steam_Prod (state, inp):
 	global steamSM
 	
-	print "State:",state,"Input:",inp 
-	output = steamSM[state]['inputs'][inp]['output']
-	info   = steamSM[state]['inputs'][inp]['info']
-	nextSt = steamSM[state]['inputs'][inp]['next']
-	print nextSt, (output, info)
+	print "State:",state,"Input:",inp
+	#check if this input is defined for this state
+	if steamSM[state]['inputs'].has_key(inp):
+		output = steamSM[state]['inputs'][inp]['output']
+		info   = steamSM[state]['inputs'][inp]['info']
+		nextSt = steamSM[state]['inputs'][inp]['next']
+	else:
+		nextSt, output, info = None, [], []
+		print "This input is not defined!"
 	return nextSt, (output, info)
 	
 #def Boiler_empty (*args):
@@ -277,7 +311,7 @@ def Steam_Prod (state, inp):
 ### INITIALIZE GAME ###
 #######################
 
-loadStateMachine()
+loadStateMachineXl()
 splitViews()
 initialize()
 
