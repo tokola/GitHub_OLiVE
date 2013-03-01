@@ -19,15 +19,16 @@ class Factory ():
 		self.toolsData = {'wrench': [[16.75,1.5,5],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
 				          'hammer': [[16.75,1.5,4],[45,0,0], True], 'match':[[16.75,1.5,6.1],[45,0,0],True],
 						  'belt':   [[13.38,1.56,7.7],[0,90,0],False]}
-		self.machines = {}		#e.g. {'engine': <engine obj>
-		self.wheels = {}		#e.g. {'mill': [<mill wheel1>, <mill wheel2>]
-		self.belts = {}			#e.g. {'laval': [<laval wheel1>, <laval wheel2>]
+		self.machines = {}		#e.g. {'engine': <engine obj>, 'lavalL:<lavalL obj>}
+		self.wheels = {}		#e.g. {'millR': [<mill wheel1>, <mill wheel2>]
+		self.belts = {}			#e.g. {'lavalL': [<laval belt1 class>, <laval belt2 class>]
 		self.components = {}	#e.g. {'engine': ['valve']}
 		self.componentPos = {}	#e.g. {<valve obj>: [10, 2, -4]}
+		self.componentPar = {}	#e.g. {'valve': 'engine', 'coal':'boiler'}
 		self.tools = {}
 		self.started = False
 		
-	def AddMachinery(self, *args):
+	def AddMachinery(self, args):
 		if 'engine' in args:	#ADD THE ENGINE
 			self.engine = Machinery.Engine(self.factory, [0.58, .6, 2.97], [-90,0,0])
 			self.machines['engine'] = self.engine
@@ -41,11 +42,23 @@ class Factory ():
 		if 'boiler' in args:	#ADD THE BOILER
 			self.boiler = Machinery.Boiler(self.factory, [7.1,0,0])
 			self.machines['boiler'] = self.boiler
-		if 'mill' in args:		# ADD THE 2 MILLS
-			millL = Machinery.Mill(self.factory, [-24.7,0,6.5], [0,0,0], 'L')
-			millR = Machinery.Mill(self.factory, [-3.7,0,6.5], [45,0,0], 'R')
-			self.machines['millR'] = millR
-			self.machines['millL'] = millL
+		if 'millL' in args:		# ADD THE LEFT MILL
+			self.millL = Machinery.Mill(self.factory, [-24.7,0,6.5], [0,0,0], 'L')
+			self.machines['millL'] = self.millL
+			wheel_millL = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+			wheel_millL.setPosition(-26.8,5.77,-7.143)
+			belt_millL = self.factory.add('models/objects/belt_mill.ive')
+			belt_millL.setPosition(-26.8,5.77,-7.143)
+			belt_millL.setEuler(0,11.4,0)
+			self.wheels['millL'] = [wheel_millL]
+			self.belts['millL'] = [belt_millL]
+#			gear_millL = belt_millL.getChild('motion gear')
+			gear_millL.setEuler(180,0,0)
+			gear_millL.center(0,0,13.953)
+			self.wheels['millL'].append(gear_millL)
+		if 'millR' in args:		# ADD THE RIGHT MILL
+			self.millR = Machinery.Mill(self.factory, [-3.7,0,6.5], [45,0,0], 'R')
+			self.machines['millR'] = self.millR
 			# wheels and belts
 			wheel_millR = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 			wheel_millR.setPosition(-1.6,5.77,-7.143)
@@ -56,18 +69,7 @@ class Factory ():
 			self.belts['millR'] = [belt_millR]
 			gear_millR = belt_millR.getChild('motion gear')
 			gear_millR.center(0,0,13.953)
-			wheel_millL = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			wheel_millL.setPosition(-26.8,5.77,-7.143)
 			self.wheels['millR'].append(gear_millR)
-			belt_millL = self.factory.add('models/objects/belt_mill.ive')
-			belt_millL.setPosition(-26.8,5.77,-7.143)
-			belt_millL.setEuler(0,11.4,0)
-			self.wheels['millL'] = [wheel_millL]
-			self.belts['millL'] = [belt_millL]
-			gear_millL = belt_millL.getChild('motion gear')
-			gear_millL.setEuler(180,0,0)
-			gear_millL.center(0,0,13.953)
-			self.wheels['millL'].append(gear_millL)
 		if 'pump' in args:		#ADD THE 2 PUMPS
 			self.pumpL = Machinery.Pump(self.factory, [-17,2.8,-6.5], [-90,0,0])
 			self.machines['pumpL'] = self.pumpL
@@ -94,14 +96,13 @@ class Factory ():
 			belt_pumpR.setEuler(0,85.5,0)
 			self.wheels['pumpR'] = [wheel_pumpR]
 			self.belts['pumpR']  = [belt_pumpR]
-		if 'press' in args:	#ADD THE 2 PRESSES
+		if 'pressL' in args:	#ADD THE 2 PRESSES
 			self.pressL = Machinery.Press(self.factory, [-17.4,0,6.5], [180,0,0])
-			self.pressR = Machinery.Press(self.factory, [-14.4,0,6.5], [180,0,0])
 			self.machines['pressL'] = self.pressL
+		if 'pressR' in args:
+			self.pressR = Machinery.Press(self.factory, [-14.1,0,6.5], [180,0,0])
 			self.machines['pressR'] = self.pressR
-		if 'laval' in args:		#ADD THE 2 LAVALS
-			self.lavalR = Machinery.Laval(self.factory, [-7.65,0,-5.81], [180,0,0])
-			self.machines['lavalR'] = self.lavalR
+		if 'lavalL' in args:		#ADD THE 2 LAVALS
 			self.lavalL = Machinery.Laval(self.factory, [-4.65,0,-5.81], [180,0,0])
 			self.machines['lavalL'] = self.lavalL
 			# wheels and belts
@@ -110,7 +111,10 @@ class Factory ():
 			belt_lavalL = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 			belt_lavalL.setPosition(-3.95, 0.893, -6.992)
 			self.wheels['lavalL'] = [wheel_lavalL]
-			self.belts['lavalL']  = [belt_lavalL]
+			self.belts['lavalL']  = [Machinery.Belt(belt_lavalL)]
+		if 'lavalR' in args:
+			self.lavalR = Machinery.Laval(self.factory, [-7.65,0,-5.81], [180,0,0])
+			self.machines['lavalR'] = self.lavalR
 			wheel_lavalR = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 			wheel_lavalR.setPosition(-7,5.77,-7.143)
 			belt_lavalR = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
@@ -122,10 +126,11 @@ class Factory ():
 		self.AddComponentsToFactory()
 		
 	def AddComponentsToFactory(self):
-		for m in self.machines.values():
+		for mName, m in self.machines.iteritems():
 			try:
 				for cName, cObj in m.components.iteritems():
 					self.components[cName] = cObj
+					self.componentPar[cName] = mName
 				for cObj, cPos in m.componentPos.iteritems():
 					self.componentPos[cObj] = cPos
 			except:
@@ -185,19 +190,15 @@ class Factory ():
 			if  self.belts.has_key(m):	#check if this machine has wheels
 				for b in self.belts[m]:
 					if m == 'lavalL':
-						global matrix1, matrix2, belt, timer
-						matrix1 = vizmat.Transform()
-						matrix2 = vizmat.Transform()
-						belt = b
-						timer = vizact.ontimer(.01, self.TurnBelt)
+						b.Start()
 					
-	def TurnBelt(self):
-		#belt=oliveFactory.belts['lavalL'][0]
-		global matrix1, matrix2, belt
-		matrix1.postTrans(0,.04,0)
-		matrix2.postTrans(0,-.04,0)
-		belt.texmat(matrix1,'belt1',0)
-		belt.texmat(matrix2,'belt2',0)
+#	def TurnBelt(self):
+#		#belt=oliveFactory.belts['lavalL'][0]
+#		global matrix1, matrix2, belt
+#		matrix1.postTrans(0,.04,0)
+#		matrix2.postTrans(0,-.04,0)
+#		belt.texmat(matrix1,'belt1',0)
+#		belt.texmat(matrix2,'belt2',0)
 		
 	def StopFactory(self):
 		self.started = False
@@ -222,5 +223,5 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	
 	oliveFactory = Factory()
-	oliveFactory.AddMachinery('laval')
+	oliveFactory.AddMachinery(('engine', 'boiler', 'lavalL', 'millR', 'pressR', 'pressL'))
 	oliveFactory.AddAllTools()

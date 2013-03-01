@@ -1,4 +1,5 @@
 ﻿import viz
+import vizmat
 import vizact
 
 viz.go()
@@ -80,12 +81,26 @@ class Mill ():
 		self.direction = dirs[LR]
 		#self.wheels = self.object.getChild('wheels')
 		#self.wheels.setCenter(0,3.954,0)
-		self.object.getChild('wheels').remove()
+		#self.object.getChild('wheels').remove()
 		self.wheels=self.object.add('models/mill_wheel.ive', pos=[0,3.964,0])
 		#get the nodes used for animation
 		self.rotationAxis = self.object.getChild('rotation_axis')
 		self.wL = self.wheels.getChild('WheelL')
 		self.wR = self.wheels.getChild('WheelR')
+		self.getComponents(pos)
+	
+	def getComponents(self, po):
+		self.components = {}
+		self.componentPos = {}
+		#add the olive sack
+		sack = self.object.add('models/objects/sack.osgb')
+		sack.setScale(3,3,3)
+		sack.setPosition(-2,4.7,12)
+		sack.setEuler(45,0,0)
+		self.components['sack'] = sack
+		self.componentPos[sack] = [-2, 4.7, 12]
+		#add the paste
+		self.paste = self.object.add('models/objects/paste.osgb', pos=[0, 0, 0])
 		
 	def Start (self):
 		self.rotationAxis.addAction(vizact.spin(0,1,0,35*self.direction,viz.FOREVER))
@@ -133,7 +148,7 @@ class Press ():
 	"""This is the Press class"""
 	def __init__(self, factory, pos, eul):
 		self.object = factory.add('models/press.osgb')
-		self.object.setScale(.045,.045,.045)
+		#self.object.setScale(.045,.045,.045)
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
 
@@ -193,7 +208,7 @@ class Boiler ():
 		self.hatch[1].center(.536, 1.504, -.242)
 		self.gauge = self.object.getChild('velona')
 		self.gauge.center(.25, 2.776, .248)
-		fire = viz.add('textures/fire.avi', loop=1, play=1)
+		fire = viz.add('textures/fire.mov', loop=1, play=1)
 		self.fire = viz.addTexQuad(texture=fire, pos=[7.2,1.2,0], alpha=0)
 		self.fire.visible(0)
 		self.object.setPosition(pos)
@@ -256,10 +271,34 @@ class Boiler ():
 		elif act == 3:	#fade out the coals and fire
 			coalFurnace.addAction(vizact.fadeTo(0.25, time=.5))
 			self.fire.addAction(vizact.fadeTo(0.25, time=.5))
-		elif act == 4:	#fade out the coals and fire completely
+		elif act == 4:	#light up the coals and fire again
+			coalFurnace.addAction(vizact.fadeTo(1, time=.5))
+			self.fire.addAction(vizact.fadeTo(.5, time=.5))
+		elif act == 5:	#fade out the coals and fire completely
 			coalFurnace.addAction(vizact.fadeTo(0, time=.5))
 			coalFurnace.addAction(vizact.method.setPosition([0,0,0]))
 			coalFurnace.addAction(vizact.method.color(viz.GRAY))
 			coalFurnace.addAction(vizact.method.visible(0))
 			self.fire.addAction(vizact.fadeTo(0, time=.5))
 			self.fire.addAction(vizact.method.visible(0))
+	
+class Belt ():
+	"""This is the Belt class"""
+	def __init__(self, obj):
+		self.belt = obj
+		self.matrix1 = vizmat.Transform()
+		self.matrix2 = vizmat.Transform()
+		self.timer = vizact.ontimer(.01, self.TurnBelt)
+		self.timer.setEnabled(viz.OFF)
+	
+	def Start(self):
+		self.timer.setEnabled(viz.ON)		
+	
+	def Stop(self):
+		self.timer.setEnabled(viz.OFF)
+		
+	def TurnBelt(self):
+		self.matrix1.postTrans(0,.04,0)
+		self.matrix2.postTrans(0,-.04,0)
+		self.belt.texmat(self.matrix1,'belt1',0)
+		self.belt.texmat(self.matrix2,'belt2',0)

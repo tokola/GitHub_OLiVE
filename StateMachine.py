@@ -2,7 +2,7 @@
 from string import upper
 
 class StateMachine ():
-	def __init__(self):
+	def __init__(self, mach=None):
 		self.handlers = {}	# stores the state callbacks
 		self.messages = {}	# stores the messages to appear on the player's panel
 		self.actions  = {}	# stores the actions to be executed on event trigger
@@ -10,6 +10,7 @@ class StateMachine ():
 		self.endStates = []
 		self.inputs = {}	#stores inputs from different players
 		self.log = {}
+		self.machine = mach	#the machine of this specific FSM
 
 	def add_state(self, state, handler, end_state=0):
 		state = upper(state)
@@ -22,7 +23,7 @@ class StateMachine ():
 	def set_start(self, state):
 		self.currentState = upper(state)
 
-	def evaluate_state(self, eInput):
+	def evaluate_state(self, eInput, synch=True):
 		try:
 			handler = self.handlers[self.currentState]
 		except:
@@ -31,9 +32,12 @@ class StateMachine ():
 		if not self.endStates:
 			raise AttributeError("At least one state must be an end_state")
 			
-		# This is the callback of the function passed when loading the state machine
-		# cargo is used to carry a tuple with actions and messages (<actionList>, <message>)
-		(newState, cargo) = handler(self.currentState, eInput)
+		# This is the callback of the function passed when loading the state machine;
+		# cargo is used to carry a tuple with actions and messages (<actionList>, <messageList>);
+		# synch is a boolean for defining if the callback function (MachineState) 
+		# will try to synch with the factory and is FALSE only for 'entry' inputs
+		# which are invoked from the SyncFactoryStates function
+		(newState, cargo) = handler(self.machine, self.currentState, eInput, synch)
 		(actions, message) = cargo
 		# make a list of message if the message received is a string
 		if not isinstance(message, list):
@@ -47,14 +51,18 @@ class StateMachine ():
 			else: #update current state and execute entry conditions
 				self.currentState = upper(newState)
 				handler = self.handlers[self.currentState]
-				(voidState, cargo) = handler(self.currentState, 'entry')
+				(voidState, cargo) = handler(self.machine, self.currentState, 'entry', synch)
 				# append entry actions to the ones triggered by the state change
 				actions = actions + cargo[0]
-				# don't display entry message if there is already defined by state change (2 messages already)
-				if cargo[1] != None and len(messages) < 2:
-					messages = messages + cargo[1]	#when the messages are lists
-					#messages.append(cargo[1])		#when the messages are strings
-		
+				# if the new state has an entry message (cargo[1]) defined... 
+				if cargo[1] != None:
+					try:	#check if the event returned any messages (exception for messages=[])
+						#if they are not defined by the event (2 messages already) or there is not an alert type
+						if len(messages) < 2 and not ('/' in str(messages[0]).partition('/')):	
+							messages = messages + cargo[1]	#when the messages are lists
+					except:
+						messages = cargo[1]
+						
 		return (actions, messages)
 		#execute_actions(actions)		
 		#print_message(message)

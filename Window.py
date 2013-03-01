@@ -5,6 +5,7 @@ from operator import itemgetter
 import sys
 import vizmat
 import vizinfo
+import viztask
 import textwrap
 import FSM_Actions
 
@@ -28,8 +29,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._name = name
 		#check if this is a player window
 		if player in [1,2,3]:
-			#self._view.collision(viz.ON)
-			self._view.collisionBuffer(0.25)
+#			self._view.collision(viz.ON)
+			self._view.collisionBuffer(0.40)
 			self._window.clearcolor(viz.SKYBLUE)
 			self.AddPanel()
 			#reset other variables
@@ -37,12 +38,15 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._selected = None
 			self._holding = None
 			self._picking = None
+			self._iMach = None		#machine interacting with (one of its components)
 			self._factory = fact
 			self.AddToToolbox('hand')
 			self._fsm = sm
 			self._mapWin = fmap
 			self._pressed = False
 			self._pickcolor = viz.GREEN
+			#set an update function to take care of window resizing (priority=0)
+			self._updateFunc = vizact.onupdate(0, self.Update)
 			#FSM_Actions.FSM_Actions.__init__(self)
 		else:	#this is the map view
 			self._window.clearcolor([.3,.3,.3])
@@ -50,12 +54,13 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._view.setPosition(-3.8,0,0)
 			self._view.setEuler(0,90,0)
 			self._alerts = {}
+			self._messages = OrderedDict()
 			self.AddMap()
-			#self.AddAvatars()
-		#set an update function to take care of window resizing (priority=0)
-		self._updateFunc = vizact.onupdate(0, self.Update)
+		
 	
+	###############################
 	### ONLY FOR THE MAP WINDOW ###
+	
 	def AddMap (self):
 		self.flmap=viz.add('models/floor_map.IVE')
 		self.flmap.texture(viz.addTexture('textures/map_view.png'),'',0)
@@ -73,19 +78,21 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._infoIcon = viz.add('textures/info_icon.png')
 
 	def ShowErrorOnMap(self, machine, mPos, flag):
-		if flag == 0:	#remove error
+		if flag == 0:	#remove error if there is one for this machine
 			if self._alerts.has_key(machine):
 				self._alerts[machine].remove()
 				del self._alerts[machine]
-		else:	#add new alert
+				del self._messages[machine]
+		else:	#add new alert if there is NOT one already for this machine
 			#aPos = self._window.worldToScreen(mPos)
 			#newAlert = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=50, pos=aPos)
-			newAlert = viz.addTexQuad(size=1.25)
-			newAlert.texture(viz.addTexture('textures/alert_icon.png'))
-			newAlert.renderOnlyToWindows([self._window])
-			newAlert.setPosition(mPos[0], 0.5, mPos[2])
-			newAlert.setEuler(0, 90, 0)
-			self._alerts[machine] = newAlert
+			if not self._alerts.has_key(machine):
+				newAlert = viz.addTexQuad(size=1.25)
+				newAlert.texture(viz.addTexture('textures/alert_icon.png'))
+				newAlert.renderOnlyToWindows([self._window])
+				newAlert.setPosition(mPos[0], 0.5, mPos[2])
+				newAlert.setEuler(0, 90, 0)
+				self._alerts[machine] = newAlert
 		
 	def AddAvatars (self):
 		self.avatars = []
@@ -93,7 +100,78 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			sphere = vizshape.addSphere(.65,10,10)
 			self.avatars.append(sphere)
 	
+	def UpdateAlerts (self, mes):
+		# update the icon on the map and the message queue
+		try:
+			# parse message for different types (i-> info, a->alert)
+			if len(mes.split('i/')) > 1:	#this is the info
+				mac = 'info'
+			elif len(mes.split('a/')) > 1:	#this is the alert
+				mac = mes.split('/')[1]
+
+			mes = mes.split('/')[2]
+			self._alert.message(mes)
+			self._messages[mac] = mes
+		except:
+			pass
+		
+		try:
+			self._scheduler.kill()
+		except:
+			pass
+		
+		if len(self._messages) > 0:
+			self._scheduler = viztask.schedule(self.CycleAlertsTask())
+	
+	def GetNextMessage (self):
+		items = self._messages.keys()
+		try:
+			# display the info only once
+			if self._cycler == 'info':
+				del self._messages['info']
+			ind = items.index(self._cycler)
+			ind += 1
+			if ind > len(items)-1:
+				self._cycler = items[0]
+			else:
+				self._cycler = items[ind]
+		except:
+			self._cycler = items[len(items)-1]
+		
+		return self._cycler
+		
+	def CycleAlertsTask (self):
+		self._cycler = None		#the next item in the list to display (starts with last)
+		fade_out = vizact.fadeTo(0, 1, time=0.5, interpolate=vizact.easeOutStrong)
+		fade_in = vizact.fadeTo(1, 0, time=0.5, interpolate=vizact.easeOutStrong)
+		for i in [a for m, a in self._alerts.iteritems() if m != 'info']:
+			a.alpha(1)
+		while True:
+			data = yield viztask.waitDirector(self.GetNextMessage)
+			nextKey = data.returnValue
+			self._alert.message(self._messages[nextKey])
+			if nextKey == 'info':
+				self._alert.icon(self._infoIcon)
+				self._alert.bgcolor(.3,.3,1,.4)
+				self._alert.bordercolor(0,0,.5,1)
+			else:
+				self._alert.icon(self._alertIcon)
+				self._alert.bgcolor(.3,.3,0,.4)
+				self._alert.bordercolor(.5,0.5,0,1)
+			if nextKey != 'info':
+				alertObj = self._alerts[nextKey]
+				yield viztask.addAction(alertObj, fade_out)
+				yield viztask.addAction(alertObj, fade_in)
+				yield viztask.addAction(alertObj, fade_out)
+				yield viztask.addAction(alertObj, fade_in)
+				yield viztask.addAction(alertObj, fade_out)
+				yield viztask.addAction(alertObj, fade_in)
+			else:
+				yield viztask.waitTime(5)
+			
+	##############################
 	### FOR THE PLAYER WINDOWS ###
+	
 	def AddPanel(self):
 		self._hud = viz.addGroup(viz.ORTHO, scene=self._window)
 		panel = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=200)
@@ -163,7 +241,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				if toolObj in self._factory.tools.values() and self.WithinReach(toolObj):
 					self._picking = toolObj
 					self._picking.color(viz.RED, op=viz.OP_OVERRIDE)
-				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2):
+				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2.5):
 					self._picking = toolObj
 					self._picking.color(self._pickcolor, op=viz.OP_OVERRIDE)
 				else:
@@ -196,7 +274,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		try: 
 			self._picking.clearAttribute(viz.ATTR_COLOR, op=viz.OP_OVERRIDE)
 			self._picking = None
-			self._fsm.evaluate_multi_input(None, self, False)	# remove player from FSM's input list
+			if self._iMach != None:	# remove player from FSM's input list
+				self._fsm[self._iMach].evaluate_multi_input(None, self, False)	
 		except AttributeError:
 			None
 		
@@ -257,6 +336,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self.LetObject()
 		self._holding = viz.add('models/objects/tool_'+obj+'.ive')
 		self._holding.setScale(.075,.075,.075)
+		self._holding.disable(viz.INTERSECTION)
 		self._holding.renderOnlyToWindows([self._window])
 		self._link = viz.link(self._view, self._holding)
 		self._link.preTrans([0,0,.2])
@@ -287,8 +367,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 					# get the component name from the object to be picked from the factory components list
 					held = self._selected
 					comp = [key for key, value in self._factory.components.iteritems() if value == self._picking][0]
-					print "Interacting with %s on %s" %(held, comp)
-					(mActions, mMessage) = self._fsm.evaluate_multi_input(held+'_'+comp, self, self._pressed)
+					#print "Interacting with %s on %s" %(held, comp)
+					self._iMach = self._factory.componentPar[comp]
+					(mActions, mMessage) = self._fsm[self._iMach].evaluate_multi_input(held+'_'+comp, self, self._pressed)
 					self.BroadcastActionsMessages(mActions, mMessage)
 					#sys.exit()	#still goes to except after executing else(?)
 		except AttributeError:
@@ -314,6 +395,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	
 	####################################
 	### COMMUNICATION WITH THE WORLD ###
+	
 	def RemoveFromWorld (self):
 		self._picking.remove()
 		
@@ -323,7 +405,10 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		
 	########################################################
 	## SENDING ACTIONS AND MESSAGES TO FSM_ACTIONS MODULE ##
+	
 	def BroadcastActionsMessages (self, acts, mess):
+		#execute action sequence (subclass function)	
+		self.execute_actions(acts)	
 		#check if the message is a local (user-only) or global message (all users)
 		for m in mess:
 			if m == None:
@@ -332,25 +417,10 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				self.DisplayLocalMessage(m)		#display message on player's window
 			else:
 				self.DisplayGlobalMessage(m)	#display message on map  (subclass function)
-		#execute action sequence (subclass function)	
-		self.execute_actions(acts)	
 	
 	def DisplayGlobalMessage (self, mes):
-		try:
-			print "Message:", mes
-			# parse message for different types (i-> info, a->alert)
-			if len(mes.split('i/')) > 1:	#this is the info
-				ico = self._mapWin._infoIcon
-				mes = mes.split('i/')[1]
-			elif len(mes.split('a/')) > 1:	#this is the alert
-				ico = self._mapWin._alertIcon
-				mes = mes.split('a/')[1]
-			self._mapWin._alert.icon(ico)	
-			self._mapWin._alert.message(mes)
-		except:
-			pass
-	
-	
+		self._mapWin.UpdateAlerts(mes)
+		
 	def DisplayLocalMessage(self, mes):
 		mes = '\n'.join(textwrap.wrap(mes, 18))
 		self._message.message(mes)
@@ -361,3 +431,5 @@ if __name__ == '__main__':
 	viz.go()
 	
 	ground = viz.addChild('ground.osgb')
+	
+	floorMap = PlayerView(winPos=[0.5,1])

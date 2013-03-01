@@ -13,7 +13,7 @@ class FSM_Actions ():
 		# check if this is a valid list and if it contains at least one action
 		try:
 			if len(actList) > 0:
-				print self._name, "executing...", actList
+				print self._name.getMessage(), "executing...", actList
 				ex = True
 			else:
 				ex = False
@@ -26,9 +26,8 @@ class FSM_Actions ():
 		for action in actList:
 			if action == 'detaching_laval_belt':
 				self._factory.lavalL.detachBelt()
-			elif action == 'attaching_belt':
+			elif 'attaching_belt' in action:
 				self._factory.lavalL.attachBelt()
-				print "selected", self._selected
 				if self._selected == 'belt':
 					self.DropObject(False)	#drop object without putting in back in place
 			elif action == 'turning_valve_on':
@@ -42,9 +41,9 @@ class FSM_Actions ():
 				#self._factory.factory.addAction(vizact.waittime(1))
 				#self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 2))
 			elif action == 'starting_timer':
-				viz.starttimer(10, 10, 0)	#timer for the first warning
-				viz.starttimer(15, 15, 0)	#timer for the second warning
-				viz.starttimer(20, 20, 0)	#timer for stopping factory
+				viz.starttimer(10, 30, 0)	#timer for the first warning
+				viz.starttimer(15, 40, 0)	#timer for the second warning
+				viz.starttimer(20, 45, 0)	#timer for stopping factory
 			elif action == 'stopping_timer':
 				viz.killtimer(10)
 				viz.killtimer(15)
@@ -62,8 +61,10 @@ class FSM_Actions ():
 				self._factory.boiler.coalAction(2)
 			elif action == 'dying_away_fire':	#fire dies away and coals are wasted
 				self._factory.boiler.coalAction(3)
-			elif action == 'exhausting_fire':	#fire dies away and coals are wasted
+			elif action == 'renewing_fire':	#fire dies away and coals are wasted
 				self._factory.boiler.coalAction(4)
+			elif action == 'exhausting_fire':	#fire dies away and coals are wasted
+				self._factory.boiler.coalAction(5)
 			# ALERTS ON MACHINERY
 			elif 'error' in action:
 				mach = action.partition('_')[2]

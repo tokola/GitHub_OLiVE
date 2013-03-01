@@ -1,7 +1,7 @@
 ﻿import viz
 import vizact
 import vizjoy
-from string import upper
+from string import upper, lower
 import Factory
 #import Machinery
 import Interaction
@@ -12,7 +12,7 @@ import StateMachine
 viz.go()
 
 viz.phys.enable()
-viz.eyeheight = 1.5
+viz.eyeheight = 1.2
 #viz.MainView.setPosition(-10,2,-5)
 #viz.MainView.setEuler(-90,0,0)
 #viz.fov(60)
@@ -21,32 +21,27 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-
-def initialize ():
-	global floorMap
-	
-	olivePress.AddMachinery('engine', 'boiler', 'laval') #, 'mill', 'pump', 'press')
-	olivePress.AddAllTools()
-	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
-
-vizact.onkeydown('i', initialize)
-vizact.onkeydown('s', olivePress.StartFactory)
+MACHINERY = ('boiler', 'lavalL', 'millR', 'pressR')
 
 ### MAKE THE DIFFERENT VIEWS ###
 
 gPlayers = {}
-gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]]},
-               2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]]},
-               3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]]}}
+gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,viz.eyeheight,0]},
+               2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,viz.eyeheight,0]},
+               3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,viz.eyeheight,0]}}
 
 def splitViews ():
 	global floorMap
 
 	# set the four different views in seperate windows (3 players and the map)
 	floorMap = Window.PlayerView(winPos=[0.5,1])
-	p1 = Window.PlayerView(view=viz.MainView, win=viz.MainWindow, winPos=[0,1], player=1, name=gPlayerData[1]['name'], fact=olivePress, sm=fsm, fmap=floorMap)
-	p2 = Window.PlayerView(winPos=[0,.5], player=2, name=gPlayerData[2]['name'], fact=olivePress, sm=fsm, fmap=floorMap)
-	p3 = Window.PlayerView(winPos=[0.5,.5], player=3, name=gPlayerData[3]['name'], fact=olivePress, sm=fsm, fmap=floorMap)
+	p1 = Window.PlayerView(view=viz.MainView, win=viz.MainWindow, winPos=[0,1], player=1, name=gPlayerData[1]['name'], fact=olivePress, sm=FSM, fmap=floorMap)
+	p2 = Window.PlayerView(winPos=[0,.5], player=2, name=gPlayerData[2]['name'], fact=olivePress, sm=FSM, fmap=floorMap)
+	p3 = Window.PlayerView(winPos=[0.5,.5], player=3, name=gPlayerData[3]['name'], fact=olivePress, sm=FSM, fmap=floorMap)
+	# set the initial view positions
+	for i,p in {1:p1,2:p2,3:p3}.iteritems():
+		p._view.setPosition(gPlayerData[i]['pos'])
+		p._view.collision(viz.ON)
 	# assign the joystick to each player
 	j2 = Interaction.Joystick(p2._window, p2)
 	j3 = Interaction.Joystick(p3._window, p3)
@@ -123,7 +118,7 @@ vizact.onkeydown(viz.KEY_BACKSPACE, startTimer)
 ############################
 
 def parseLogFile (parser):
-	log = fsm.log
+	log = FSM.log
 	if parser == 'time':
 		output = []
 		for p,data in log.iteritems():
@@ -138,189 +133,183 @@ def parseLogFile (parser):
 ## STATES for STATE MACHINE ##
 ##############################
 
-def loadStateMachineXl():
+def loadMachFSM_Xl():
 	import xlrd	#load the library for reading Excel files
-	global fsm, steamSM
-	
-	fsm = StateMachine.StateMachine()
-	
+	global FSM, STATES
 	#load state machine from an external file
-	steamSM = {}
+	FSM = {}
+	STATES = {}
 	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
 	#Get the first sheet in the workbook by index
-	sheet1 = workbook.sheet_by_name('FSM2')
-	#Get each row in the sheet as a list and print the list
+	sheet1 = workbook.sheet_by_name('FSM')
 	r = 0
 	for rowNumber in range(sheet1.nrows):
 		r += 1
 		if r == 1: continue	#skip the title line
 		stateData = sheet1.row_values(rowNumber)
 		state = upper(stateData[0])
+		#add each machine as a separate instance in FSM, and dictionary in STATES
+		m = stateData[0].split('/')[0]
+		FSM.setdefault(m, StateMachine.StateMachine(m))
+		STATES.setdefault(m, {})
+		#add the data in list format to the STATES of machine m
 		data = dict(func=stateData[1], inputs={})
-		steamSM.setdefault(state, data)
+		STATES[m].setdefault(state, data)
 		#load the states in the state machine
-		fsm.add_state(state, eval(data['func']))
+		FSM[m].add_state(state, eval(data['func']))
+		# set start and end states (start state set by SyncFactoryStates during initialize)
+		#FSM[m].add_state("Start", start)
+		FSM[m].add_state("End", None, end_state=True)
+		#FSM[m].set_start('START')
 		#set the inputs subdictionary with: input:{next state, output, info}
 		if stateData[3] == '':
 			stateData[3] = None
 		inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=stateData[5].split('; '))
-		if inputs['output'] == ['']: del inputs['output'][0]
-		steamSM[state]['inputs'][stateData[2]] = inputs
-	#print steamSM
-	# set start and end states
-	fsm.add_state("Start", start)
-	fsm.add_state("game finished", None, end_state=True)
-	exec("fsm.set_start('START')")
-	#fsm.set_start('Idle')
+		if inputs['output'] == ['']: 
+			del inputs['output'][0]
+		if inputs['info'] == ['']: 
+			del inputs['info'][0]
+		STATES[m][state]['inputs'][stateData[2]] = inputs
+		
+	#print STATES
 	
-def loadStateMachineTxt():
-	global fsm, steamSM
-	
-	fsm = StateMachine.StateMachine()
-	
+def loadFactFSM_Xl():
+	import xlrd	#load the library for reading Excel files
+	global FaSM, FaSTATES
 	#load state machine from an external file
-	steamSM = {}
-	file = open('OLiVE_StateMachine.txt', 'r')
-	l = 0
-	#dictionary with states: {<state>:{'func':<function>, 'inputs':{'entry':{'output':[<actions>], 'info':[<messages>]}
-	#															   {<input1>:{'output':[<actions>], 'info':[<messages>]}
-	for line in file:
-		l = l + 1
-		if l == 1: continue	#skip the title line
-		stateData = line.split('\t')
+#	FaSM = StateMachine.StateMachine()
+	FaSTATES = {}
+	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
+	#Get the first sheet in the workbook by index
+	sheet1 = workbook.sheet_by_name('FaSM')
+	r = 0
+	for rowNumber in range(sheet1.nrows):
+		r += 1
+		if r == 1: continue	#skip the title line
+		stateData = sheet1.row_values(rowNumber)
 		state = upper(stateData[0])
-		if state != '':
-#			data = dict(func=stateData[1], entryM=stateData[2].split('; '), entryA=stateData[3].split('; '))
-			data = dict(func=stateData[1], inputs={})
-			steamSM.setdefault(state, data)
-#			if steamSM[state]['entryA'] == ['']: del steamSM[state]['entryA'][0]
-#			if steamSM[state]['entryM'] == ['']: del steamSM[state]['entryM'][0]
-			fsm.add_state(state, eval(data['func']))
-			#set the inputs subdictionary with: input:{next state, output, info}
-			mes = stateData[5]
-			if mes == ['']: 
-				del mes[0]
-			else:
-				if '"' in mes:
-					mes = eval(mes)
-			if stateData[3] == '':
-				stateData[3] = None
-			inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=mes.split('; '))
-			if inputs['output'] == ['']: del inputs['output'][0]
-#			steamSM[state].setdefault('inputs', {})
-			steamSM[state]['inputs'][stateData[2]] = inputs
-	print steamSM
-	file.close()
-	# set start and end states
-	fsm.add_state("Start", idle)
-	fsm.add_state("game finished", None, end_state=True)
-	exec("fsm.set_start('Start')")
-	#fsm.set_start('Idle')
+		machStates = stateData[2].split('; ')
+#		data = dict(func=stateData[1], inputs={})
+		FaSTATES.setdefault(state, machStates)
+	print FaSTATES
 
-vizact.onkeydown('m', loadStateMachineTxt)
-
-def start (*args):
+def start (*args):	
 	print "Game started!"
-	#return 'Laval-belt-off', ([], None)
-	return 'Laval-belt-off', ([], None)
+	m = args[0]
+	return m+'/idle', ([], None)
 
-def Steam_Prod (state, inp):
-	global steamSM
+def MachineState (mach, state, inp, sync=False):
+	global STATES
 	
 	print "State:",state,"Input:",inp
 	#check if this input is defined for this state
-	if steamSM[state]['inputs'].has_key(inp):
-		output = steamSM[state]['inputs'][inp]['output']
-		info   = steamSM[state]['inputs'][inp]['info']
-		nextSt = steamSM[state]['inputs'][inp]['next']
+	if STATES[mach][state]['inputs'].has_key(inp):
+		output = STATES[mach][state]['inputs'][inp]['output']
+		info   = STATES[mach][state]['inputs'][inp]['info']
+		nextSt = STATES[mach][state]['inputs'][inp]['next']
+		
 	else:
 		nextSt, output, info = None, [], []
 		print "This input is not defined!"
+	# change remaining machine states if this is an entry input
+	# and this function was not called through SynchFactoryStates
+	if inp == 'entry' and sync == True:
+		act, mess = SyncFactoryStates(state)
+	try:
+		output += act
+		info += mess
+		print "Machine state returns:", nextSt, output, info
+	except:
+		pass
 	return nextSt, (output, info)
-	
-#def Boiler_empty (*args):
-#	# If all args are received this is the entry condition of the state
-#	# otherwise check the input for this state
-#	mInput = args[0]
-#	if mInput == 'shovel_coal':
-#		mes = "You are shoveling coal in the boiler, which is necessary for its operation"
-#		return 'Boiler-off/loaded', ([], [mes])
-#	elif mInput == 'hand_valve':
-#		mes = "The boiler is still empty, so there is no need to allow steam supply to the engine"
-#		return None, ([], [mes])
-##	if mInput == 'shovel_coal':
-##		mes = "You need someone to hammer the coal as well (if that makes sense!)"
-#		return None, ([], [mes])
-#	if mInput == 'hammer_coal':
-#		mes = "You need someone to shovel the coal as well (doh!)"
-#		return None, ([], [mes])
-#	return None, ([], None)
-#			
-#def Boiler_loaded (*args):
-#	mInput = args[0]
-#	if mInput == 'hand_valve':
-#		mes = "This valve allows flow of steam from the boiler to the engine"
-#		return 'Boiler-on', (['turning_valve_on'], [mes])
-#	elif mInput == 'shovel_coal':
-#		mes = "The steam pressure is in good levels, so you don't need to load more coal"
-#		return None, ([], [mes])
-#	return None, ([], None)
-#
-#def Boiler_working (*args):
-#	mInput = args[0]
-#	if mInput == 'hand_valve':
-#		mes = "Steam supply is already on; you should better not turn off the engine!"
-#		return None, ([], [mes])
-#	elif mInput == 'shovel_coal':
-#		mes = "Boiler has enough pressure, so you don't need to load more coal"
-#		return None, ([], [mes])
-#	elif mInput == '10_mins_later':
-#		return 'Boiler-low-pressure', ([], None)
-#	return None, ([], None)
-#	
-#def Boiler_pressure (*args):
-#	mInput = args[0]
-#	if mInput == 'hand_valve':
-#		mes = "Steam supply is already on; you should better not turn off the engine!"
-#		return None, ([], [mes])
-#	elif mInput == 'shovel_coal':
-#		mes = ["i/Good! Steam supply is back to normal", "The boiler needs coal quite often to keep it running"]
-#		return 'Boiler-on', (['stopping_timer'], mes)
-#	elif mInput == '15_mins_later':
-#		mes = "a/Danger! Boiler pressure is very low which may lead to machine shutdown!"
-#		return None, (['dropping_pressure'], [mes])
-#	elif mInput == '20_mins_later':
-#		return 'Boiler-on/empty', (['stopping_timer'], None)
-#	return None, ([], None)
-#	
-#def Boiler_on_empty (*args):
-#	mInput = args[0]
-#	if mInput == 'hand_valve':
-#		mes = "Good! You can now ignite the boiler again"
-#		return 'Boiler-off/empty', (['turning_valve_off'], [mes])
-#	elif mInput == 'shovel_coal':
-#		mes = "You need to turn the vale off first before igniting the boiler"
-#		return None, ([], [mes])
-#	return None, ([], None)
-#	
-#def Engine_on (*args):
-#	#Referenced as a callback in FSM file but not used in the scenario
-#	pass
-	
+
+def SyncFactoryStates (state):
+	global FaSTATES
+	print "------------SYNCRONIZING MACHINES-------------"
+	actions, messages = [], []
+	if FaSTATES.has_key(state):
+		for st in FaSTATES[state]:
+			newState = None
+			mach = st.split('/')[0]
+			if ':' in st:
+				stOR = st.split('#')
+				for stat in stOR:
+					s = stat.split(':')
+					mach2 = s[1].split('/')[0]	#allow camparison of different machines' states
+					if FSM[mach2].currentState == upper(s[1]):
+						newState = s[0]
+						break
+			else:
+				if FSM[mach].currentState != upper(st):
+					newState = st
+			#print "MACHINE:", mach	
+			try:	#change machine to the new state, if there is one defined
+				print upper(newState), "-> new state of machine:", mach 
+				FSM[mach].set_start(newState)
+				(a, m) = FSM[mach].evaluate_state('entry', synch=False)
+				actions  += a
+				messages += m
+			except:
+				pass
+	print "----------------------------------------------"
+	return actions, messages
+
+def getFaStates ():
+	global FSM
+	for m in FSM.keys():
+		print m, "->", FSM[m].currentState
+		
 #######################
 ### INITIALIZE GAME ###
 #######################
 
-loadStateMachineXl()
-splitViews()
+def initialize ():
+	global floorMap
+	
+	loadMachFSM_Xl()
+	loadFactFSM_Xl()
+	splitViews()
+	
+	olivePress.AddMachinery(MACHINERY) #, 'mill', 'pump', 'press')
+	olivePress.AddAllTools()
+	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
+	
+	(actions, message) = SyncFactoryStates ('FACTORY/START')
+	#(actions, message) = FSM['boiler'].evaluate_state("START")
+	#(actions, message) = FSM['engine'].evaluate_state("START")
+	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
+
+vizact.onkeydown('i', initialize)
+vizact.onkeydown('s', olivePress.StartFactory)
+
+
 initialize()
 
-(actions, message) = fsm.evaluate_state("START")
-gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 
 def timerExpire(id):
-	if id in [10, 15, 20]:
-		(actions, message) = fsm.evaluate_state(str(id)+'_mins_later')
+	if id in [10, 15, 20]:	#timers for boiler alerts
+		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'_mins_later')
 		gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 		
 viz.callback(viz.TIMER_EVENT, timerExpire)
+
+def applyNormalToMillR():
+#	kazani=olivePress.machines['millR'].object.getChild('kazani')
+	kazani=viz.add('models/tank.osgb')
+	normal=viz.add('models/images/PRITSINIA_NORMAL_2.tga')
+	diffuse=viz.add('models/images/kazani_unfolded.tga')
+	kazani.bumpmap(normal,'',0)
+	kazani.texture(diffuse,'',1)
+	kazani.color(1,1,1)
+	
+def applyNormalToPumpL():
+	global tank
+	tank=viz.add('models/pump_tank.ive')
+	tank.setPosition(-5,2,0)
+	tank.setScale(.1,.1,.1)
+	#tank=olivePress.machines['pumpL'].object.getChild('water tank')
+	normal=viz.add('models/images/testNormal.jpg')
+	diffuse=viz.add('models/images/Roiled Concrete.tga')
+	tank.bumpmap(normal,'',0)
+	tank.texture(diffuse,'',1)
+	tank.color(1,1,1)

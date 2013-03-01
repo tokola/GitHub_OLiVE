@@ -110,13 +110,13 @@ class Joystick(viz.EventClass):
                 self.ControlObject(toolLink)
             if e.button == 4:
                 self.player.DropObject()
-            if e.button in [2, 11, 12]:
+            if e.button in [2, 7, 8, 11, 12]:
                 self.player.PickObject(True)
-            if e.button == 8:
+            if e.button == 9:
                 self.player.HideShowHUD()
         except AttributeError:
             pass
-        print e.button
+        #print e.button
 
     def joyup(self, e):
         if e.joy != self.joystick:
