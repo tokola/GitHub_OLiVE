@@ -41,9 +41,9 @@ class FSM_Actions ():
 				#self._factory.factory.addAction(vizact.waittime(1))
 				#self._factory.factory.addAction(vizact.call(self._factory.boiler.coalAction, 2))
 			elif action == 'starting_timer':
-				viz.starttimer(10, 30, 0)	#timer for the first warning
-				viz.starttimer(15, 40, 0)	#timer for the second warning
-				viz.starttimer(20, 45, 0)	#timer for stopping factory
+				viz.starttimer(10, 300, 0)	#timer for the first warning
+				viz.starttimer(15, 400, 0)	#timer for the second warning
+				viz.starttimer(20, 450, 0)	#timer for stopping factory
 			elif action == 'stopping_timer':
 				viz.killtimer(10)
 				viz.killtimer(15)
@@ -65,6 +65,36 @@ class FSM_Actions ():
 				self._factory.boiler.coalAction(4)
 			elif action == 'exhausting_fire':	#fire dies away and coals are wasted
 				self._factory.boiler.coalAction(5)
+			elif 'loading_mill' in action:	#has * at the end
+				LR = action[-2:-1]
+				viz.starttimer(ord(LR), 5, 0)	#timer while loading the olives L:76, R:82
+				mill = 'mill'+ LR
+				sackID = action[-3:-1]
+				exec('self._factory.'+mill+'.SackAnim(\"'+sackID+'\")')
+			elif 'starting_crash' in action:
+				LR = action[-1:]
+				mill = 'mill'+ LR
+				exec('self._factory.'+mill+'.OlivesToPaste()')
+			elif 'pouring_paste' in action:
+				LR = action[-1:]
+				mill = 'mill'+ LR
+				exec('self._factory.'+mill+'.PasteInTank()')
+			elif 'wasting_paste' in action:
+				LR = action[-1:]
+				mill = 'mill'+ LR
+				exec('self._factory.'+mill+'.WastingPaste()')
+			elif 'timerM' in action:
+				LR = action[-1:]
+				action = action.replace(LR, '')	#delete the last character
+				timerTag = action.partition('_')[2]
+				timerCode = action.partition('_')[0][-1:]	#1=set timer, 0=kill timer
+				#e.g., (1,5) -> set timer id=77 (76+1) or id=83 (82+1) for 5 secs
+				timers = {'dilute':(1,20), 'thick':(2,10), 'ready':(3,10), 'hot':(4,15), 'wasted':(5,25)}
+				if int(timerCode) == 1:
+					viz.starttimer(ord(LR)+timers[timerTag][0], timers[timerTag][1], 0)
+				else:
+					viz.killtimer(ord(LR)+timers[timerTag][0])
+			
 			# ALERTS ON MACHINERY
 			elif 'error' in action:
 				mach = action.partition('_')[2]

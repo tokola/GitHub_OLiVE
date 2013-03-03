@@ -30,7 +30,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		#check if this is a player window
 		if player in [1,2,3]:
 #			self._view.collision(viz.ON)
-			self._view.collisionBuffer(0.40)
+			self._view.collisionBuffer(0.25)
 			self._window.clearcolor(viz.SKYBLUE)
 			self.AddPanel()
 			#reset other variables
@@ -126,8 +126,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def GetNextMessage (self):
 		items = self._messages.keys()
 		try:
-			# display the info only once
-			if self._cycler == 'info':
+			# display the info only once if there are alerts in the queue
+			if self._cycler == 'info' and len(self._messages) > 1:
 				del self._messages['info']
 			ind = items.index(self._cycler)
 			ind += 1
@@ -241,7 +241,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				if toolObj in self._factory.tools.values() and self.WithinReach(toolObj):
 					self._picking = toolObj
 					self._picking.color(viz.RED, op=viz.OP_OVERRIDE)
-				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2.5):
+				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2):
 					self._picking = toolObj
 					self._picking.color(self._pickcolor, op=viz.OP_OVERRIDE)
 				else:
@@ -367,7 +367,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 					# get the component name from the object to be picked from the factory components list
 					held = self._selected
 					comp = [key for key, value in self._factory.components.iteritems() if value == self._picking][0]
-					#print "Interacting with %s on %s" %(held, comp)
+					print "Interacting with %s on %s" %(held, comp)
 					self._iMach = self._factory.componentPar[comp]
 					(mActions, mMessage) = self._fsm[self._iMach].evaluate_multi_input(held+'_'+comp, self, self._pressed)
 					self.BroadcastActionsMessages(mActions, mMessage)

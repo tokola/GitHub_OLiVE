@@ -82,25 +82,86 @@ class Mill ():
 		#self.wheels = self.object.getChild('wheels')
 		#self.wheels.setCenter(0,3.954,0)
 		#self.object.getChild('wheels').remove()
-		self.wheels=self.object.add('models/mill_wheel.ive', pos=[0,3.964,0])
 		#get the nodes used for animation
 		self.rotationAxis = self.object.getChild('rotation_axis')
+		self.wheels=self.object.add('models/mill_wheels.ive', pos=[0,3.964,0])
 		self.wL = self.wheels.getChild('WheelL')
 		self.wR = self.wheels.getChild('WheelR')
-		self.getComponents(pos)
+		self.tankPulp = self.object.getChild('pulp')
+		self.getComponents()
 	
-	def getComponents(self, po):
+	def getComponents (self):
 		self.components = {}
 		self.componentPos = {}
-		#add the olive sack
-		sack = self.object.add('models/objects/sack.osgb')
-		sack.setScale(3,3,3)
-		sack.setPosition(-2,4.7,12)
-		sack.setEuler(45,0,0)
-		self.components['sack'] = sack
-		self.componentPos[sack] = [-2, 4.7, 12]
-		#add the paste
-		self.paste = self.object.add('models/objects/paste.osgb', pos=[0, 0, 0])
+		# Add the paste
+		self.mixedPulp = self.object.add('models/objects/paste.osgb', pos=[0, 0, 0])
+		self.mixedPulp.getChild('olives').setAnimationSpeed(.75)
+		self.mixedPulp.alpha(0)
+		self.mixedPulp.visible(0)
+		justPaste = self.mixedPulp.getChild('paste')
+		self.components['paste'] = justPaste
+		self.componentPos[justPaste] = self.object.getPosition()
+		# Add the hatch
+		hatch = self.object.getChild('Portaki')
+		hatch.center(.916, 2.681, -2.885)
+		self.components['hatch'] = hatch
+		millPos = self.object.getPosition()
+		self.componentPos[hatch] = [millPos[0]+.916/3, millPos[1]+2.681/3, millPos[2]-2.885/3]
+		# Add the sacks
+		self.sackItem = viz.add('models/objects/sack.osgb')
+#		self.sackItem.setPosition([-2,1.5,10])
+#		self.sackItem.setEuler(90,0,0)
+		self.sackPour = self.sackItem.getChild('sack_pouring')
+		self.sackPour.center(-3.905, 1.504, 8.611)
+#		self.oliveFlow = self.sackItem.getChild('olive_flow')
+		self.sackItem.alpha(0, 'sack_pouring', viz.OP_OVERRIDE)
+#		self.oliveFlow.alpha(0, 'olive_flow', viz.OP_OVERRIDE)
+#		self.sackPour.setPosition(-3.9, 1.5, 8.4)
+		sackR1 = self.sackItem.getChild('sack')
+#		sackR2 = self.sackItem.getChild('sack').copy()
+#		sackR2.setPosition([-2,1.5,11])
+#		sackR2.setEuler(90,0,0)
+		#add sacks to the components and componentPos
+		self.components['sack1R'] = sackR1
+#		self.components['sack2R'] = sackR2
+		self.componentPos[sackR1] = [-1.692, 1.502, 9.963]
+#		self.componentPos[sackR2] = sackR2.getPosition()
+		
+	def SackAnim (self, sid):	#sid is the sack id: {1R, 2R, 1L, or 2L}
+		sack = self.components['sack'+sid]
+		self.sackPour.addAction(vizact.waittime(3))	#wait for sack animation
+		sack_path = self.sackItem.getChild('path'+sid).copy()
+#		sack_path.setAnimationLoopMode(0)
+		sack.setParent(sack_path, node='path'+sid)
+#		self.sackPour.addAction(vizact.method.setPosition([-2.5,0,0]))
+		self.sackPour.addAction(vizact.fadeTo(1, begin=0, time=.5)) #, node='sack_bent'))
+#		self.sackPour.addAction(vizact.fadeTo(1, begin=0, time=.5))	#, node='olive_flow'))
+		self.sackPour.addAction(vizact.spinTo(euler=[0,-45,0], time=.75, interpolate=vizact.easeInStrong))
+		loadSignal = vizact.signal()
+		self.sackPour.addAction(loadSignal.trigger)
+		self.sackPour.addAction(vizact.waittime(2))
+		self.sackPour.addAction(vizact.fadeTo(0, time=.5))
+		self.mixedPulp.addAction(loadSignal.wait)
+		self.mixedPulp.addAction(vizact.method.visible(1))
+		self.mixedPulp.addAction(vizact.fadeTo(1, begin=0, time=1, node='olives'))
+	
+	def OlivesToPaste (self):
+		justPaste = self.components['paste']
+		justPaste.addAction(vizact.fadeTo(1, begin=0, time=5))
+	
+	def WastingPaste (self):
+		self.mixedPulp.addAction(vizact.fadeTo(0, time=1))
+		
+	def PasteInTank (self):
+		hatch = self.components['hatch']
+		hatch.addAction(vizact.moveTo([.97-.917, 3.102-2.681, -3.095+2.885], time=1, interpolate=vizact.easeInOut))
+		hatch.addAction(vizact.waittime(1))
+		openSignal = vizact.signal()
+		hatch.addAction(openSignal.trigger)
+		# code for pouring animation
+		self.tankPulp.addAction(openSignal.wait)
+		self.tankPulp.addAction(vizact.waittime(.5))
+		self.tankPulp.addAction(vizact.moveTo([0,1,0], time=3, interpolate=vizact.easeOut))
 		
 	def Start (self):
 		self.rotationAxis.addAction(vizact.spin(0,1,0,35*self.direction,viz.FOREVER))
@@ -113,6 +174,7 @@ class Mill ():
 		self.wheels.endAction()
 		self.wL.endAction()
 		self.wR.endAction()
+
 		
 class Engine ():
 	"""This is the Engine class"""

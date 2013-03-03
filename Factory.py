@@ -16,9 +16,11 @@ class Factory ():
 	
 	def __init__ (self):
 		self.factory = viz.add('models/factory.osgb')
+		# list of tools with position, orientation data and boolean for physics enabled or not
 		self.toolsData = {'wrench': [[16.75,1.5,5],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
 				          'hammer': [[16.75,1.5,4],[45,0,0], True], 'match':[[16.75,1.5,6.1],[45,0,0],True],
-						  'belt':   [[13.38,1.56,7.7],[0,90,0],False]}
+						  'belt':   [[13.38,1.56,7.7],[0,90,0],False], 'water': [[-2,0,5],[0,0,0],True]}
+		self.itemsData = {'sack1R': [[-1.5,1.5,10], [90,0,0]], 'sack2R': [[-1.5,1.5,11.2], [90,0,0]]}
 		self.machines = {}		#e.g. {'engine': <engine obj>, 'lavalL:<lavalL obj>}
 		self.wheels = {}		#e.g. {'millR': [<mill wheel1>, <mill wheel2>]
 		self.belts = {}			#e.g. {'lavalL': [<laval belt1 class>, <laval belt2 class>]
@@ -26,7 +28,15 @@ class Factory ():
 		self.componentPos = {}	#e.g. {<valve obj>: [10, 2, -4]}
 		self.componentPar = {}	#e.g. {'valve': 'engine', 'coal':'boiler'}
 		self.tools = {}
-		self.started = False
+		self.started = False	
+		
+	def AnimateSack(self):
+		self.sackItem = viz.add('models/objects/sack.osgb')
+		sack = self.sackItem.getChild('sack')
+		sack_path = self.sackItem.getChild('path1R').copy()
+#		sack_path.setAnimationLoopMode(0)
+		sack.setParent(sack_path, node='path1R')
+
 		
 	def AddMachinery(self, args):
 		if 'engine' in args:	#ADD THE ENGINE
@@ -52,7 +62,7 @@ class Factory ():
 			belt_millL.setEuler(0,11.4,0)
 			self.wheels['millL'] = [wheel_millL]
 			self.belts['millL'] = [belt_millL]
-#			gear_millL = belt_millL.getChild('motion gear')
+			gear_millL = belt_millL.getChild('motion gear')
 			gear_millL.setEuler(180,0,0)
 			gear_millL.center(0,0,13.953)
 			self.wheels['millL'].append(gear_millL)
@@ -223,5 +233,5 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	
 	oliveFactory = Factory()
-	oliveFactory.AddMachinery(('engine', 'boiler', 'lavalL', 'millR', 'pressR', 'pressL'))
+	oliveFactory.AddMachinery(('boiler', 'millR'))
 	oliveFactory.AddAllTools()

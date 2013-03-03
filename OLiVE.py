@@ -12,7 +12,6 @@ import StateMachine
 viz.go()
 
 viz.phys.enable()
-viz.eyeheight = 1.2
 #viz.MainView.setPosition(-10,2,-5)
 #viz.MainView.setEuler(-90,0,0)
 #viz.fov(60)
@@ -21,14 +20,15 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-MACHINERY = ('boiler', 'lavalL', 'millR', 'pressR')
+MACHINERY = ('boiler', 'engine', 'lavalL', 'millR', 'pressR')
+EYEHEIGHT = 1.5
 
 ### MAKE THE DIFFERENT VIEWS ###
 
 gPlayers = {}
-gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,viz.eyeheight,0]},
-               2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,viz.eyeheight,0]},
-               3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,viz.eyeheight,0]}}
+gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,EYEHEIGHT,0]},
+               2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
+               3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
 
 def splitViews ():
 	global floorMap
@@ -42,6 +42,8 @@ def splitViews ():
 	for i,p in {1:p1,2:p2,3:p3}.iteritems():
 		p._view.setPosition(gPlayerData[i]['pos'])
 		p._view.collision(viz.ON)
+		p._view.eyeheight(EYEHEIGHT)
+		p._view.stepsize(.35)
 	# assign the joystick to each player
 	j2 = Interaction.Joystick(p2._window, p2)
 	j3 = Interaction.Joystick(p3._window, p3)
@@ -235,7 +237,7 @@ def SyncFactoryStates (state):
 				stOR = st.split('#')
 				for stat in stOR:
 					s = stat.split(':')
-					mach2 = s[1].split('/')[0]	#allow camparison of different machines' states
+					mach2 = s[1].split('/')[0]	#allow comparison of different machines' states
 					if FSM[mach2].currentState == upper(s[1]):
 						newState = s[0]
 						break
@@ -287,9 +289,32 @@ initialize()
 
 
 def timerExpire(id):
-	if id in [10, 15, 20]:	#timers for boiler alerts
-		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'_mins_later')
-		gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
+	if id in [10, 15, 20]:	# timers for boiler alerts
+		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'-mins-later')
+	elif id in [76, 82]:	# timer for mill loading expiration
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('anim-finished')
+	elif id in [77, 83]:	# timer for paste to be diluted
+		if id < 82: id = 76
+		else: id = 82
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-dilute')
+	elif id in [78, 84]:	# timer for paste being too thick (display warning)
+		if id < 82: id = 76	# Left Mill
+		else: id = 82		# Right Mill
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-thick')
+	elif id in [79, 85]:	# timer for paste being ready
+		if id < 82: id = 76
+		else: id = 82
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-ready')
+	elif id in [80, 86]:	# timer for paste being too hot (display warning)
+		if id < 82: id = 76
+		else: id = 82
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-hot')
+	elif id in [81, 87]:	# timer for paste being wasted
+		if id < 82: id = 76
+		else: id = 82
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-wasted')
+	#tell player 1 to broadcast messages and actions
+	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 		
 viz.callback(viz.TIMER_EVENT, timerExpire)
 
