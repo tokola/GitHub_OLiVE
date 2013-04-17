@@ -30,7 +30,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		#check if this is a player window
 		if player in [1,2,3]:
 #			self._view.collision(viz.ON)
+			self._view.stepSize(.35)
 			self._view.collisionBuffer(0.25)
+			self._view.getHeadLight().disable()
 			self._window.clearcolor(viz.SKYBLUE)
 			self.AddPanel()
 			#reset other variables
@@ -228,20 +230,20 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			# check there are at least 3 objects intersecting (at least the first 2 are the cursor object itself)
 			if len(objList) < 3:
 				return
-			#get rid of the holding object(s) and keep the first one
-			objList = [i for i in objList if i != self._holding]
+			#get rid of the holding object and its children and keep the first one found
+			objList = [i for i in objList if (i != self._holding) and (not i in self._holding.getChildren())]
 			#check if the list is empty (picking outside of the world)
 			if len(objList) == 0:
 				return
 			toolObj = objList[0]
-			
+#			print "TOOL interecting: ", toolObj
 			# RULE: ALL OBJECTS RESPOND TO HELD ITEMS; tools turn red, components turn green (1P) or orange(2-3P)
 			if self._selected == 'hand':				
 				#print "Obj colliding", toolObj
 				if toolObj in self._factory.tools.values() and self.WithinReach(toolObj):
 					self._picking = toolObj
 					self._picking.color(viz.RED, op=viz.OP_OVERRIDE)
-				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2):
+				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2.5):
 					self._picking = toolObj
 					self._picking.color(self._pickcolor, op=viz.OP_OVERRIDE)
 				else:
@@ -285,6 +287,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		obj.setParent(self._hud)
 		obj.setPosition(-60+len(self._toolbox)*45, 60, 0)
 		obj.setScale(1,.4,1)
+		tool = self._factory.FilterAddedTool(tool)	# adds 'ful' for 'can' if full
 		textur = viz.addTexture('textures/tool_'+tool+'.png', useCache=True)
 		textur_sel = viz.addTexture('textures/tool_'+tool+'_sel.png', useCache=True)
 		obj.texture(textur)
@@ -304,6 +307,21 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			t['obj'].setPosition(-60+i*45, 60, 0)
 			i += 1
 	
+	### CALLED FROM THE FSM_ACTIONS ###
+	def _CanFull (self, flag):
+		if 'can' in self._toolbox.keys():
+			self._holding.getChild('pulp').visible(flag)
+			self.RemoveFromToolbox('can')
+			self.AddToToolbox('canful')
+			self.ZoomIcon('canful', 1)
+			self._factory.SetCanFull(True)
+		elif 'canful' in self._toolbox.keys():
+			self._holding.getChild('pulp').visible(flag)
+			self._factory.SetCanFull(False)
+			self.RemoveFromToolbox('canful')
+			self.AddToToolbox('can')
+			self.ZoomIcon('can', 1)
+		
 	### SENT FROM THE JOYSTICK CLASS ###
 	def SelectItem(self, prevNext):	#-1 for previous, 1 for next
 		self.ResetPick()
@@ -334,6 +352,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		if obj == None:
 			obj = self._selected
 		self.LetObject()
+		obj = self._factory.FilterAddedObj(obj)	#filters out 'ful' for the can
 		self._holding = viz.add('models/objects/tool_'+obj+'.ive')
 		self._holding.setScale(.075,.075,.075)
 		self._holding.disable(viz.INTERSECTION)
@@ -343,6 +362,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		if obj != 'hand':
 			self._link.preEuler([0,-90,0], viz.LINK_ORI_OP)
 			self._link.preEuler([-30,0,0], viz.LINK_ORI_OP)
+		if obj == 'can':
+			self._holding.getChild('pulp').visible(self._factory.GetCanFull())
 		# return the held object as a link
 		return self._link
 			

@@ -20,7 +20,7 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-MACHINERY = ('boiler', 'engine', 'lavalL', 'millR', 'pressR')
+MACHINERY = ('boiler', 'engine', 'lavalL', 'millR', 'pressR', 'loader')
 EYEHEIGHT = 1.5
 
 ### MAKE THE DIFFERENT VIEWS ###
@@ -43,7 +43,6 @@ def splitViews ():
 		p._view.setPosition(gPlayerData[i]['pos'])
 		p._view.collision(viz.ON)
 		p._view.eyeheight(EYEHEIGHT)
-		p._view.stepsize(.35)
 	# assign the joystick to each player
 	j2 = Interaction.Joystick(p2._window, p2)
 	j3 = Interaction.Joystick(p3._window, p3)
@@ -289,6 +288,7 @@ initialize()
 
 
 def timerExpire(id):
+	print "expiring...", id
 	if id in [10, 15, 20]:	# timers for boiler alerts
 		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'-mins-later')
 	elif id in [76, 82]:	# timer for mill loading expiration
@@ -313,6 +313,11 @@ def timerExpire(id):
 		if id < 82: id = 76
 		else: id = 82
 		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-wasted')
+	# Timers for millR
+	elif id == 600:			# tranfer tank animation expired (millR)
+		(actions, message) = FSM['millR'].evaluate_state('transfer-done')
+	elif id == 601:			# reset mill to empty state (millR)
+		(actions, message) = FSM['millR'].evaluate_state('mill-reset')
 	#tell player 1 to broadcast messages and actions
 	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 		

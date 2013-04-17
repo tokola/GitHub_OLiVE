@@ -19,7 +19,8 @@ class Factory ():
 		# list of tools with position, orientation data and boolean for physics enabled or not
 		self.toolsData = {'wrench': [[16.75,1.5,5],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
 				          'hammer': [[16.75,1.5,4],[45,0,0], True], 'match':[[16.75,1.5,6.1],[45,0,0],True],
-						  'belt':   [[13.38,1.56,7.7],[0,90,0],False], 'water': [[-2,0,5],[0,0,0],True]}
+						  'belt':   [[13.38,1.56,7.7],[0,90,0],False], 'water': [[-2,0,5],[0,-90,0],True],
+						  'can':    [[-15.5,1.1,1.65], [90,0,0], False]}
 		self.itemsData = {'sack1R': [[-1.5,1.5,10], [90,0,0]], 'sack2R': [[-1.5,1.5,11.2], [90,0,0]]}
 		self.machines = {}		#e.g. {'engine': <engine obj>, 'lavalL:<lavalL obj>}
 		self.wheels = {}		#e.g. {'millR': [<mill wheel1>, <mill wheel2>]
@@ -28,15 +29,14 @@ class Factory ():
 		self.componentPos = {}	#e.g. {<valve obj>: [10, 2, -4]}
 		self.componentPar = {}	#e.g. {'valve': 'engine', 'coal':'boiler'}
 		self.tools = {}
-		self.started = False	
+		self.started = False
+		self._canCond = False	#False-> empty can | True-> full can
+		self.AddLights()
 		
-	def AnimateSack(self):
-		self.sackItem = viz.add('models/objects/sack.osgb')
-		sack = self.sackItem.getChild('sack')
-		sack_path = self.sackItem.getChild('path1R').copy()
-#		sack_path.setAnimationLoopMode(0)
-		sack.setParent(sack_path, node='path1R')
-
+	def AddLights (self):
+		light1 = self.AddLight([0, 9, 0], viz.WHITE, viz.WHITE,0)
+		light1 = self.AddLight([-14.5, 9, 0], viz.WHITE, viz.WHITE,0)
+		light1 = self.AddLight([14.5, 9, 0], viz.WHITE, viz.WHITE,0)
 		
 	def AddMachinery(self, args):
 		if 'engine' in args:	#ADD THE ENGINE
@@ -112,25 +112,32 @@ class Factory ():
 		if 'pressR' in args:
 			self.pressR = Machinery.Press(self.factory, [-14.1,0,6.5], [180,0,0])
 			self.machines['pressR'] = self.pressR
+		if 'loader' in args:	#ADD THE LOADING TABLE
+			self.loader = Machinery.Loader(self, self.factory, [-14.1,0,5], [180,0,0])
+			self.machines['loader'] = self.loader
 		if 'lavalL' in args:		#ADD THE 2 LAVALS
-			self.lavalL = Machinery.Laval(self.factory, [-4.65,0,-5.81], [180,0,0])
+			self.lavalL = Machinery.Laval(self.factory, [-7.8,0,-4.8], [180,0,0])
 			self.machines['lavalL'] = self.lavalL
-			# wheels and belts
-			wheel_lavalL = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			wheel_lavalL.setPosition(-4, 5.77, -7.143)
-			belt_lavalL = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			belt_lavalL.setPosition(-3.95, 0.893, -6.992)
-			self.wheels['lavalL'] = [wheel_lavalL]
-			self.belts['lavalL']  = [Machinery.Belt(belt_lavalL)]
 		if 'lavalR' in args:
-			self.lavalR = Machinery.Laval(self.factory, [-7.65,0,-5.81], [180,0,0])
+			self.lavalR = Machinery.Laval(self.factory, [-10.2,0,-4.8], [180,0,0])
 			self.machines['lavalR'] = self.lavalR
-			wheel_lavalR = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			wheel_lavalR.setPosition(-7,5.77,-7.143)
-			belt_lavalR = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			belt_lavalR.setPosition(-6.95, 0.893, -6.992)
-			self.wheels['lavalR'] = [wheel_lavalR]
-			self.belts['lavalR']  = [belt_lavalR]
+#			belt_lavalR = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+#			belt_lavalR.setPosition(-6.95, 0.893, -6.992)
+#			self.wheels['lavalR'] = [wheel_lavalR]
+#			self.belts['lavalR']  = [belt_lavalR]
+		if 'oilPump' in args:
+			self.oilPump = oilPump.Tanks(self.factory, [-7.65,0,-5.81], [180,0,0])
+			self.machines['oilPump'] = self.oilPump
+		# wheels and belts for the laval sub-system
+		wheel_lavalUp = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+		wheel_lavalUp.setPosition(-5, 5.77, -7.143)
+		wheel_lavalDn = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+		wheel_lavalDn.setPosition(-5, 0.893, -7)
+		wheel_lavalDn.setScale(.75,.75,.75)
+		belt_laval = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+		belt_laval.setPosition(-4.95, 0.893, -6.992)
+		self.wheels['lavalR'] = [wheel_lavalUp, wheel_lavalDn]
+		self.belts['lavalR']  = [Machinery.Belt(belt_laval)]
 				
 		#get all components from machines and store them in factory.components
 		self.AddComponentsToFactory()
@@ -147,19 +154,24 @@ class Factory ():
 				pass
 	
 	def AddOtherStuff(self):
+		#Add tanks
+		global tanks, base1
+		tanks = self.factory.add('models/objects/tanks.ive')
+		tanks.setPosition([-9,0,-7.2])
+		tanks.setScale(1.5, 1.5, 1.5)
 		#Decorate self.factory
-		table = self.factory.add('models/objects/table.ive')
-		table.setPosition(-12,0,9.8)
-		table.setScale(.1,.1,.1)
-		table2 = self.factory.add('models/objects/table.ive')
-		table2.setPosition(-16,0,9.8)
-		table2.setScale(.1,.1,.1)
-		boxes=self.factory.add('models/objects/boxes.ive')
-		boxes.setScale(.1,.1,.1)
-		boxes.setPosition(-10,0,6)
-		vessel=self.factory.add('models/objects/wooden vessel.ive')
-		vessel.setScale(.1,.1,.1)
-		vessel.setPosition(-25.5,0,-6.5)
+#		table = self.factory.add('models/objects/table.ive')
+#		table.setPosition(-12,0,9.8)
+#		table.setScale(.1,.1,.1)
+#		table2 = self.factory.add('models/objects/table.ive')
+#		table2.setPosition(-16,0,9.8)
+#		table2.setScale(.1,.1,.1)
+#		boxes=self.factory.add('models/objects/boxes.ive')
+#		boxes.setScale(.1,.1,.1)
+#		boxes.setPosition(-10,0,6)
+#		vessel=self.factory.add('models/objects/wooden vessel.ive')
+#		vessel.setScale(.1,.1,.1)
+#		vessel.setPosition(-25.5,0,-6.5)
 	
 	
 	def AddAllTools(self):
@@ -175,12 +187,57 @@ class Factory ():
 		table3.collideBox()
 	
 	def AddTool(self, tool):
+		tool = self.FilterAddedObj(tool)
 		self.tools[tool] = self.factory.add('models/objects/tool_'+tool+'.ive')
 		self.tools[tool].setPosition(self.toolsData[tool][0])
 		self.tools[tool].setEuler(self.toolsData[tool][1])
 		if self.toolsData[tool][2]:	#no physics for the shovel
 			self.tools[tool].collideBox()
-		
+		if tool == 'can':
+			self.tools[tool].getChild('pulp').visible(self._canCond)
+	
+	def AddLight(self, pos, lightColor, glareColor, group):
+		Light = viz.addLight(group=group)
+		Light.position(0,0,0)
+		Light.setPosition(pos)
+		Light.color(lightColor)
+		Light.linearattenuation(0.1)
+		GlareQuad = viz.addTexQuad(parent=Light)
+		GlareQuad.billboard()
+		GlareQuad.color(glareColor)
+		GlareQuad.disable(viz.LIGHTING)
+		GlareQuad.setScale([0.2,0.2,0.2])
+		return Light
+	
+	###### USED FOR TOOL MANIPULATION FROM THE LOADER ########
+	def AddMatAsTool (self, tool, toolObj):
+		print "ADDING ", tool, toolObj
+		self.tools[tool] = toolObj
+		self.tools[tool].setParent(self.factory)
+		self.tools[tool].setPosition(self.loader.object.getPosition())
+		self.tools[tool].setEuler(self.loader.object.getEuler())
+	
+	def SetCanFull (self, state):
+		self._canCond = state
+	
+	def GetCanFull (self):
+		return self._canCond
+	
+	# convert canful to can when object (model) is asked
+	def FilterAddedObj (self, obj):
+		if obj == 'canful':
+			return 'can'
+		else:
+			return obj
+	
+	# convert can to canful when tool name is asked, if can if full with paste
+	def FilterAddedTool (self, tool):
+		if tool == 'can':
+			# conditional expression for returning canful instead of can
+			return ('canful' if self._canCond else 'can')
+		else:
+			return tool
+			
 	def StartFactory (self):
 		if self.started:	#don't run the script again if the factory is aleady started
 			return
@@ -221,7 +278,9 @@ class Factory ():
 	def RemoveFactory (self):
 		self.factory.remove(children = True)
 		
+	
 if __name__ == '__main__':
+	viz.setMultiSample(8)
 	viz.go()
 
 	viz.phys.enable()
@@ -231,7 +290,9 @@ if __name__ == '__main__':
 	#viz.fov(60)
 	#viz.collision(viz.ON)
 	viz.clearcolor(viz.SKYBLUE)
+	viz.MainView.getHeadLight().disable()
 	
 	oliveFactory = Factory()
-	oliveFactory.AddMachinery(('boiler', 'millR'))
+	oliveFactory.AddMachinery(('millR', 'millL', 'pressL', 'pressR', 'loader', 'tanks', 'lavalL', 'lavalR'))
 	oliveFactory.AddAllTools()
+	oliveFactory.AddOtherStuff()

@@ -26,10 +26,12 @@ class FSM_Actions ():
 		for action in actList:
 			if action == 'detaching_laval_belt':
 				self._factory.lavalL.detachBelt()
-			elif 'attaching_belt' in action:
-				self._factory.lavalL.attachBelt()
-				if self._selected == 'belt':
-					self.DropObject(False)	#drop object without putting in back in place
+			elif 'attaching_belt' in action:	#has * at the end
+				if not '*' in action:	#execute the action only the first time
+					print "ATTACHING BELTTTTTTTTTTT by", self._name.getMessage()
+					self._factory.lavalL.attachBelt()
+				if self._selected == 'belt':#the one holding the belt should...	
+					self.DropObject(False)	#drop it without putting in back in place
 			elif action == 'turning_valve_on':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_openValve, 3))
 			elif action == 'turning_valve_off':
@@ -66,10 +68,13 @@ class FSM_Actions ():
 			elif action == 'exhausting_fire':	#fire dies away and coals are wasted
 				self._factory.boiler.coalAction(5)
 			elif 'loading_mill' in action:	#has * at the end
-				LR = action[-2:-1]
+				if '*' in action:	#don't let the second player execute the action again
+					return
+				LR = action[-1:]
+				print "ACTION", action, LR
 				viz.starttimer(ord(LR), 5, 0)	#timer while loading the olives L:76, R:82
 				mill = 'mill'+ LR
-				sackID = action[-3:-1]
+				sackID = action[-2:]
 				exec('self._factory.'+mill+'.SackAnim(\"'+sackID+'\")')
 			elif 'starting_crash' in action:
 				LR = action[-1:]
@@ -78,11 +83,22 @@ class FSM_Actions ():
 			elif 'pouring_paste' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
+				viz.starttimer(ord(LR), 5, 0)	#timer while pouring the paste L:76, R:82
 				exec('self._factory.'+mill+'.PasteInTank()')
 			elif 'wasting_paste' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
 				exec('self._factory.'+mill+'.WastingPaste()')
+			elif 'transfering_tank' in action:
+				LR = action[-1:]
+				mill = 'mill'+ LR
+				viz.starttimer(ord(LR), 3, 0)	#timer while transferring the tank L:76, R:82
+				exec('self._factory.'+mill+'.MovingTank()')
+			elif 'resetting_mill' in action:
+				LR = action[-1:]
+				mill = 'mill'+ LR
+				viz.starttimer(ord(LR), 1, 0)	#timer while resetting mill L:76, R:82
+				exec('self._factory.'+mill+'.MovingTank()')
 			elif 'timerM' in action:
 				LR = action[-1:]
 				action = action.replace(LR, '')	#delete the last character
@@ -94,7 +110,32 @@ class FSM_Actions ():
 					viz.starttimer(ord(LR)+timers[timerTag][0], timers[timerTag][1], 0)
 				else:
 					viz.killtimer(ord(LR)+timers[timerTag][0])
-			
+			########## LOADER ACTIONS ##############
+			elif action == 'serving_mat':
+				self._factory.loader.matOnTable()
+			elif 'getting_pulp' in action:
+				amount = int(action[-2:])
+				self._factory.loader.pulpInTank(amount)
+			elif action == 'scooping_pulp':
+				self._factory.loader.pulpInTank(-.5)
+				self._CanFull(True)	# sent to player holding can
+			elif action == 'removing_pulp':
+				self._factory.loader.pulpInTank(-1)
+			elif action == 'loading_mat':
+				self._factory.loader.loadMat()
+				self._CanFull(False)	# sent to player holding can
+			elif action == 'mat_as_tool':
+				matObj = self._factory.loader.components['mat']
+				self._factory.AddMatAsTool('mat', matObj)
+			######## PRESS ACTIONS ###############
+			elif 'loading_press' in action:
+				LR = action[-1:]
+				press = 'press'+ LR
+				exec('self._factory.'+press+'.LoadMat()')
+#			elif 's-timer' in action:
+#				timerID = action.rpartition('_')[2]
+#				viz.starttimer(int(timerID), 5, 0)
+				
 			# ALERTS ON MACHINERY
 			elif 'error' in action:
 				mach = action.partition('_')[2]
