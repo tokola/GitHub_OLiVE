@@ -20,8 +20,8 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-MACHINERY = ('boiler', 'engine', 'lavalL', 'millR', 'pressR', 'loader')
-EYEHEIGHT = 1.5
+MACHINERY = ('boiler', 'engine', 'lavalL', 'millR', 'pressR', 'pumpR', 'loader')
+EYEHEIGHT = 1.75
 
 ### MAKE THE DIFFERENT VIEWS ###
 
@@ -41,15 +41,15 @@ def splitViews ():
 	# set the initial view positions
 	for i,p in {1:p1,2:p2,3:p3}.iteritems():
 		p._view.setPosition(gPlayerData[i]['pos'])
-		p._view.collision(viz.ON)
-		p._view.eyeheight(EYEHEIGHT)
+#		p._view.collision(viz.ON)
 	# assign the joystick to each player
+	j1 = Interaction.Joystick(p1._window, p1)
 	j2 = Interaction.Joystick(p2._window, p2)
 	j3 = Interaction.Joystick(p3._window, p3)
 	# set the avatar for each player
-	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'])
-	a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'])
-	a3 = Avatar.Avatar(p3._view, gPlayerData[3]['colors'])
+	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'], EYEHEIGHT)
+	a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
+	a3 = Avatar.Avatar(p3._view, gPlayerData[3]['colors'], EYEHEIGHT)
 	# make a list of all the players
 	gPlayers[1] = {'player': p1, 'joy': None, 'avatar': a1}
 	gPlayers[2] = {'player': p2, 'joy': j2, 'avatar': a2}
@@ -289,8 +289,10 @@ initialize()
 
 def timerExpire(id):
 	print "expiring...", id
+	# TIMERS FOR BOILER
 	if id in [10, 15, 20]:	# timers for boiler alerts
 		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'-mins-later')
+	# TIMERS FOR MILLS [millL: 76-81, millR: 82-87]
 	elif id in [76, 82]:	# timer for mill loading expiration
 		(actions, message) = FSM['mill'+chr(id)].evaluate_state('anim-finished')
 	elif id in [77, 83]:	# timer for paste to be diluted
@@ -318,6 +320,29 @@ def timerExpire(id):
 		(actions, message) = FSM['millR'].evaluate_state('transfer-done')
 	elif id == 601:			# reset mill to empty state (millR)
 		(actions, message) = FSM['millR'].evaluate_state('mill-reset')
+	# TIMERS FOR PRESSES [pumpL: 576-579, pumpR: 582-585]
+	elif id in [576, 582]:	# timer for press releasing animation expiration
+		(actions, message) = FSM['press'+chr(id-500)].evaluate_state('anim-finished')
+	elif id in [577, 583]:	# timer called when the pump reaches 1500psi (pressure good)
+		(actions, message) = FSM['press'+chr(id-501)].evaluate_state('press-start')
+	elif id in [578, 584]:	# timer called when the pump reaches 4000psi (pressure done)
+		(actions, message) = FSM['press'+chr(id-502)].evaluate_state('press-finish')
+	elif id in [579, 585]:	# timer called when the pump bypass valve is closed
+		(actions, message) = FSM['press'+chr(id-503)].evaluate_state('press-reset')
+	# TIMERS FOR PUMPS [pumpL: 177-181, pumpR: 183-187]
+	elif id in [176, 182]:	# timer for pump damage expiration
+		(actions, message) = FSM['pump'+chr(id-100)].evaluate_state('anim-finished')
+	elif id in range(177, 188):	# timers for pump animations
+		animsL = {177: 'good', 178: 'safe', 179: 'done', 180: 'high', 181: 'max'}
+		animsR = {183: 'good', 184: 'safe', 185: 'done', 186: 'high', 187: 'max'}
+		if id in animsL: 
+			code = animsL[id]
+			id = 76
+		else: 
+			code = animsR[id]
+			id = 82
+		(actions, message) = FSM['pump'+chr(id)].evaluate_state('pressure-'+code)
+		
 	#tell player 1 to broadcast messages and actions
 	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 		

@@ -66,7 +66,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def AddMap (self):
 		self.flmap=viz.add('models/floor_map.IVE')
 		self.flmap.texture(viz.addTexture('textures/map_view.png'),'',0)
-		self.flmap.setPosition(0, .5, 0)
+		self.flmap.setPosition(0, .1, 0)
 		#self.flmap.setScale(1, 1, 1.1)
 		self.flmap.renderOnlyToWindows([self._window])
 		self.bg = viz.addTexQuad(parent=viz.ORTHO, scene=self._window)
@@ -236,6 +236,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			if len(objList) == 0:
 				return
 			toolObj = objList[0]
+			self.objList = objList
+#			print "OBJ",objList
 #			print "TOOL interecting: ", toolObj
 			# RULE: ALL OBJECTS RESPOND TO HELD ITEMS; tools turn red, components turn green (1P) or orange(2-3P)
 			if self._selected == 'hand':				

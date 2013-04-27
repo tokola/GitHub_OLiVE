@@ -5,7 +5,7 @@ import vizshape
 
 class Avatar():
 	"""This is the Avatar class"""
-	def __init__ (self, view, color):
+	def __init__ (self, view, color, eyeH):
 		self._view = view
 #		self._player_matrix = viz.Matrix() #self.view.getMatrix()
 		self._avatar = Robot.Steve()
@@ -19,12 +19,14 @@ class Avatar():
 		self._avatar.setShadeColor(shadeColor)
 #		self._avatar.setTracker(self._player_matrix)
 		self._avatar.setTracker(viz.link(self._view, viz.NullLinkable,offset=[0,-0.25,0]))
+		self._view.collision(viz.ON)
+		self._view.eyeheight(eyeH)
 		# add the representation on the map
 		self._mapAva = viz.addTexQuad(size=.75)
 		#self._mapAva = vizshape.addSphere(.5,10,10)
 		self._mapAva.texture(viz.addTexture('textures/mapAva_icon.png'),'',0)
 		self._mapAva.color(bodyColor)
-		self._updateFunc = vizact.onupdate(0, self.UpdatePlayer)
+#		self._updateFunc = vizact.onupdate(0, self.UpdatePlayer)
 		
 	def UpdatePlayer(self):
 #		self._view.setPosition([self._view.getPosition()[0], 1.82, self._view.getPosition()[2]])

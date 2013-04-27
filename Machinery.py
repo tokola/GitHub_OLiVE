@@ -6,15 +6,19 @@ viz.go()
 
 class Pump():
 	"""This is the Pump class"""
-	def __init__(self, factory, pos, eul):
+	def __init__(self, factory, pos, eul, LR, faClass):
 		self.object = factory.add('models/pump.ive')
 		self.object.setScale(.0015,.0015,.0015)
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
+		self.LR = LR
+		self.faClass = faClass	#the factory class used to get the belts
 		#fix swlinaki
-		self.object.getChild('swlinaki').setPosition(0,20,-40)
+		#self.object.getChild('swlinaki').setPosition(0,20,-40)
 		#Add individual objects (wheel, shaft, connection rods, pistons)
-		self.wheel = self.object.add('models/pump_wheel.ive', pos=(-243.232,-372.44,311.102))
+		wheel = self.object.add('models/pump_wheels.ive', pos=(-243.232,-372.44,311.102))
+		self.gear = wheel.getChild('mainGear')
+		self.crazy = wheel.getChild('crazyWheel')
 		self.shaft = self.object.add('models/pump_crankshaft.ive', pos=(13.245,-196.394,738.167))
 		self.rodL = self.object.add('models/pump_conrodL.ive', pos=(13.245,-196.394,738.167))
 		self.rodL.center(0,-514.739,-539.148)
@@ -22,11 +26,64 @@ class Pump():
 		self.rodR.center(0,-448.407, -237.04)
 		self.pistonL = self.object.add('models/pump_pistonL.ive', pos=(13.245,-196.394,738.167))
 		self.pistonR = self.object.add('models/pump_pistonR.ive', pos=(13.245,-196.394,738.167))
+		# load other moving parts
+		self.gauge = self.object.getChild('gaugeNeedle')
+		self.gauge.center(229.246, -654.955, 642.767)
+		self.bar = self.object.getChild('pressureBar')
+		self.bar.center(44.983, -813.081, 413.712)
+		self.bar = self.object.getChild('pressureRod')
+		self.bar.center(-50.902, -862.024, 426.787)
+		self.getComponents()
 		
-	def Start (self):
+	def getComponents (self):
+		self.components = {}
+		self.componentPos = {}
+		valve = self.object.getChild('bypassValve')
+		valve.center(169.156, -858.204, 350.093)
+		self.components['bypass'] = valve
+		self.componentPos[valve] = self.object.getPosition()
+		guide = self.object.getChild('beltGuide')
+		self.components['guide'] = guide
+		self.componentPos[guide] = self.object.getPosition()
+		
+	def ChangeGuide (self, dir):	#dir=1 -> move right, -1 -> move left
+		guide = self.components['guide']
+		pos = guide.getPosition()
+		newPos = [pos[0], pos[1], pos[2]+100*dir]
+		self.faClass.belts['pump'+self.LR].MoveBelt(dir)
+		guide.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))
+	
+	def TurnValve (self, dir):
+		self.components['bypass'].addAction(vizact.spin(1*dir,0,0,360,3))
+	
+	def IncreasePressure (self):
+		self.bar.addAction(vizact.call(self.ChangePressure, 1500))
+		self.bar.addAction(vizact.waittime(15))
+		self.bar.addAction(vizact.call(self.ChangePressure, 2000))
+		
+	def ChangePressure(self, pressure):
+		self.gauge.endAction()
+		#dict of tuples (degrees of rotation, anim duration) for every pressure value
+		presToAngle = {4500: (270,30), 4000: (240,60), 1500: (90,10), 0:(0,5)}
+		angle = presToAngle[pressure][0]
+		duration = presToAngle[pressure][1]
+		ease = vizact.easeInOutCubic
+		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
+#		if angle == 270:
+#			incPress = vizact.spinTo(euler=[0, 180, 0], time=5, interpolate=vizact.easeIn)
+#			self.gauge.addAction(incPress)
+#			ease = vizact.easeOut
+		incPress = vizact.spinTo(euler=[0, angle, 0], time=duration, interpolate=ease)
+		self.gauge.addAction(incPress)
+		
+	def StartCrazy (self):
+		self.crazy.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
+		
+	def StopCrazy (self):
+		self.crazy.endAction()
+		
+	def SetMotion (self):
 		#reset component position
-		self.wheel.setPosition(-243.232,-372.44,311.102)
-		self.shaft.setPosition(13.245,-196.394,738.167)
 		self.shaft.setEuler(0,0,0)
 		self.rodL.setPosition(13.245,-196.394,738.167)
 		self.rodR.setPosition(13.245,-196.394,738.167)
@@ -37,7 +94,7 @@ class Pump():
 		self.pistonL.setEuler(0,0,0)
 		self.pistonR.setEuler(0,0,0)
 		#self.wheel.setEuler(0,0,0)
-		self.wheel.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
+		self.gear.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
 		self.shaft.addAction(vizact.spin(0,0,1,-36,viz.FOREVER))
 		#set the left rod's action (rotation and transform)
 		moveRodUp = vizact.moveTo([13.245,-130,738.167], time=5)
@@ -62,13 +119,21 @@ class Pump():
 		pistonRTransform = vizact.sequence([moveRodRDown, moveRodRUp], viz.FOREVER)
 		self.pistonR.addAction(pistonRTransform)
 		
-	def Stop (self):
-		self.wheel.endAction()
+	def EndMotion (self):
+		self.gear.endAction()
 		self.shaft.endAction()
 		self.rodL.endAction()
 		self.rodR.endAction()
 		self.pistonL.endAction()
 		self.pistonR.endAction()
+	
+	def Start (self):
+		self.StartCrazy()
+		
+	def Stop (self):
+		self.StopCrazy()
+		self.EndMotion()
+		
 		
 class Mill ():
 	"""This is the Mill class"""
@@ -96,15 +161,16 @@ class Mill ():
 		self.components = {}
 		self.componentPos = {}
 		# Add the paste
-#		self.object.getChild('mixedPulp').remove()
-#		self.mixedPulp = self.object.add('models/objects/paste.osgb', pos=[0, 0, 0])
-		self.mixedPulp = self.object.getChild('mixedPulp')
-		self.mixedPulp.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
-		self.mixedPulp.disable(viz.BLEND)
+		self.object.getChild('mixedPulp').remove()
+		self.mixedPulp = self.object.add('models/objects/paste_mixed.osgb', pos=[0, 0, 0])
+#		self.mixedPulp = self.object.getChild('mixedPulp')
+#		self.mixedPulp.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
+#		self.mixedPulp.disable(viz.BLEND)
 		self.mixedPulp.getChild('olives').setAnimationSpeed(.75)
 		self.mixedPulp.alpha(0)
-#		self.mixedPulp.visible(0)
+		self.mixedPulp.visible(0)
 		justPaste = self.mixedPulp.getChild('paste')
+		justPaste.visible(0)
 		self.components['paste'] = justPaste
 		self.componentPos[justPaste] = self.object.getPosition()
 		# Add the hatch
@@ -169,9 +235,9 @@ class Mill ():
 		justPaste = self.components['paste']
 		justPaste.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
 		justPaste.disable(viz.BLEND)
+		justPaste.addAction(vizact.method.visible(1))
 		justPaste.addAction(vizact.fadeTo(1, begin=0, time=5))
-		
-	
+			
 	def WastingPaste (self):
 		self.mixedPulp.addAction(vizact.fadeTo(0, time=1))
 		
@@ -257,6 +323,7 @@ class Press ():
 		self.mats.visible(0)
 		self.mats.alpha(0)
 		self.oilStrain = self.object.getChild('matOil')
+		self.oilStrain.visible(0)
 		self.oilStrain.alpha(0)
 		self.oilDrop = self.object.getChild('OilDropD')
 		self.oilDrop.visible(0)
@@ -267,6 +334,8 @@ class Press ():
 		self.oilSurface = self.object.getChild('oilSurface')
 		self.oilSurface.setPosition(0,-.165,0)
 		self.piston = self.object.getChild('pressPiston')
+		#for storing the loaded mats (objects)
+		self.loadedMats = []
 		self.getComponents()
 	
 	def getComponents (self):
@@ -278,10 +347,32 @@ class Press ():
 		self.componentPos[pressTray] = [pos[0], pos[1]+1.5, pos[2]]
 	
 	def LoadMat (self):
-		self.mat.addAction(vizact.method.visible(1))
-		self.mat.addAction(vizact.fadeTo(1, begin=0, time=1))
+		mat = self.mat.copy()
+		mat.setParent(self.object)
+		counter = len(self.loadedMats)
+		self.loadedMats.append(mat)
+		mat.setPosition(0, .05*counter, 0)
+		mat.addAction(vizact.method.visible(1))
+		mat.addAction(vizact.fadeTo(1, begin=0, time=.5))
+		counter += 1
+		if counter == 1:
+			waitMat = vizact.signal()
+			mat.addAction(waitMat.trigger)
+			mat.addAction(vizact.fadeTo(0, time=.25))
+			mat.addAction(vizact.method.remove(0))
+			for m in self.loadedMats:
+				m.addAction(waitMat.wait)
+				m.addAction(vizact.fadeTo(0, time=.25))
+				m.addAction(vizact.method.remove())
+			self.mats.addAction(waitMat.wait)
+			self.mats.addAction(vizact.method.visible(1))
+			self.mats.addAction(vizact.fadeTo(1, begin=0, time=.5))
+			
 		
 	def Pressing (self):
+		self.oilStrain.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
+		self.oilStrain.disable(viz.BLEND)
+		# start moving the piston upwards (not sure why it's working with Z value)
 		self.piston.addAction(vizact.moveTo([0,0,.25], time=60, interpolate=vizact.easeOutCubic))
 		self.mats.addAction(vizact.waittime(10))	# start straining after 10 secs
 		reachTop = vizact.signal()	# signal when mats have reached the top
@@ -291,6 +382,7 @@ class Press ():
 		self.mats.addAction(stopStrain.trigger)
 		# oil straining starts when mats reach the top and stops 3'' after strain is over
 		self.oilStrain.addAction(reachTop.wait)
+		self.oilStrain.addAction(vizact.method.visible(1))
 		self.oilStrain.addAction(vizact.fadeTo(1, time=1))
 		self.oilStrain.addAction(stopStrain.wait)
 		self.oilStrain.addAction(vizact.fadeTo(0, time=3))
@@ -316,7 +408,7 @@ class Press ():
 		self.oilSurface.addAction(startDrop.wait)
 		self.oilSurface.addAction(vizact.moveTo([0,0,0], time=45))
 	
-	def DePressing (self):
+	def Releasing (self):
 		self.piston.addAction(vizact.moveTo([0,0,0], time=10, interpolate=vizact.easeOut))
 		
 	#Get the engine working
@@ -356,16 +448,17 @@ class Loader ():
 		tankPaste = self.object.getChild('pasteSurface')
 		tankPaste.center(1.777,.123,4.198)
 		self.components['pulp'] = tankPaste
-		self.componentPos[tankPaste] = [pos[0]-1.777, pos[1]+.503, pos[2]-4.198]
+		self.componentPos[tankPaste] = [pos[0]-1.777, pos[1]+.123, pos[2]-4.198]
 		matPile = self.object.getChild('EmptyMats')
 		self.components['matPile'] = matPile
 		self.componentPos[matPile] = [pos[0]-3.539, pos[1]+.159, pos[2]-2.575]
 	
-	def loadMat (self):
+	def FillMat (self):
 		mat = self.components['mat']
 		matPaste = mat.getChild('Paste')
 		matFlatPaste = mat.getChild('FlatPaste')
 		matFlatPaste.setPosition(0,-.02,0)
+		matPaste.setPosition(0,0,0)
 		matPaste.addAction(vizact.method.visible(1))
 		matPaste.addAction(vizact.fadeTo(1, time=.5))
 		matPaste.addAction(vizact.moveTo([0,-.1,0], time=2))
@@ -374,20 +467,28 @@ class Loader ():
 		matFlatPaste.addAction(vizact.moveTo([0,0,0], time=2))
 #		matFlatPaste.addAction(vizact.call(self.faClass.AddMatAsTool, 'mat', mat))
 	
-	def matOnTable (self):
+	def MatOnTable (self):
 		mat = self.components['mat']
 		mat.setPosition(1.58,0.3,0, viz.REL_PARENT)
 		mat.addAction(vizact.method.visible(1))
 		mat.addAction(vizact.moveTo([0,0.3,0], time=1, interpolate=vizact.easeInCircular))
 		mat.addAction(vizact.moveTo([0,0,0], time=.5, interpolate=vizact.easeOutCircular))
 		
-	def pulpInTank (self, inOut):	# >0 -> add, <0 -> subtract
+	def PulpInTank (self, inOut):	# >0 -> add, <0 -> subtract
 		self.PulpLevel += inOut
 		amount = self.PulpLevel * .05
 		pulp = self.components['pulp']
 		move = vizact.moveTo([0,amount,0], time=1)
 		resize = vizact.sizeTo([1+amount/4,1,1+amount/2], time=1)
 		pulp.addAction(vizact.parallel(move, resize))
+	
+	def PickMat(self):
+		mat = self.components['mat']
+		mat.getChild('Paste').visible(0)
+		mat.getChild('Paste').alpha(0)
+		mat.getChild('FlatPaste').visible(0)
+		mat.visible(0)
+		mat.setPosition([0,0,0], viz.REL_PARENT)
 		
 	def Start (self):
 		pass
@@ -435,6 +536,27 @@ class Laval ():
 	def attachBelt (self):
 		self.belt.addAction(vizact.fadeTo(1, begin=0, time=1))
 		self.belt.visible(1)
+
+class OilPump ():
+	"""This is the Oil Pump class"""
+	def __init__(self, factory, pos, eul):
+		self.object = factory.add('models/oil_pump.ive')
+		self.object.setPosition(pos)
+		self.object.setEuler(eul)
+		base = factory.add('models/objects/concrete base.ive')
+		base.setPosition(pos[0]+0.12, pos[1]-.3, pos[2]+0.02)
+		base.scale(.07,.1,.08)
+		self.cyl = self.object.getChild('cylinder')
+		self.cyl.center(-.292, .638, -.026)
+		self.rod = self.object.getChild('rod')
+		self.rod.center(-.428, .642, -.104)
+		link = viz.link(self.cyl, self.rod)
+	
+	def Start(self):
+		pass
+		
+	def Stop(self):
+		pass
 		
 class Boiler ():
 	"""This is the Boiler class"""
@@ -470,7 +592,7 @@ class Boiler ():
 		self.componentPos[coal] = [boiPos[0]+1.5, boiPos[1]+.23, boiPos[2]-.6]
 		self.componentPos[coalLoad] = boiPos
 		
-	def changePressure(self, pressure):
+	def ChangePressure(self, pressure):
 		self.gauge.endAction()
 		presToAngle = {4500: 270, 3000: 180, 1500: 90, 0:0}
 		angle = presToAngle[pressure]
@@ -483,14 +605,14 @@ class Boiler ():
 		incPress = vizact.spinTo(euler=[0,0,-angle], time=5, interpolate=ease)
 		self.gauge.addAction(incPress)
 		
-	def openCloseHatch(self, open):	#open=True or False
+	def OpenCloseHatch(self, open):	#open=True or False
 		angle = 120 * open
 		openLeft = vizact.spinTo(euler=[angle,0,0], time=2, interpolate=vizact.easeOut)
 		openRight = vizact.spinTo(euler=[-angle,0,0], time=2, interpolate=vizact.easeOut)
 		self.hatch[0].addAction(openLeft)
 		self.hatch[1].addAction(openRight)
 		
-	def coalAction(self, act):	#act=1->load, 2->light, 3->waste
+	def CoalAction(self, act):	#act=1->load, 2->light, 3->waste
 		coalFurnace = self.components['coalfurnace']
 		if act == 1:	#fade in the coals
 			coalFurnace.addAction(vizact.method.visible(1))
@@ -548,3 +670,8 @@ class Belt ():
 		self.matrix2.postTrans(0,-.04,0)
 		self.belt.texmat(self.matrix1,'belt1',0)
 		self.belt.texmat(self.matrix2,'belt2',0)
+		
+	def MoveBelt (self, dir):
+		pos = self.belt.getPosition()
+		newPos = [pos[0]-.14*dir, pos[1], pos[2]]
+		self.belt.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))

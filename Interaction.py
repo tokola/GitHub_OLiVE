@@ -33,6 +33,8 @@ class Joystick(viz.EventClass):
         #Get the joystick position
         x,y,z = self.joystick.getPosition()
         twist = self.joystick.getTwist()
+        rx,ry,rz = self.joystick.getRotation()
+        twist = rz
         
         #Move the viewpoint forward/backward based on y-axis value
         if abs(y) > 0.2:

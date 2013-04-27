@@ -48,7 +48,7 @@ class Factory ():
 			belt_engine=self.factory.add('models/objects/belt_engine.ive')
 			belt_engine.setPosition(0.75,5.77,-7.143)
 			belt_engine.setEuler(0,27.1,0)
-			self.belts['engine'] = [belt_engine]
+			self.belts['engine'] = belt_engine
 		if 'boiler' in args:	#ADD THE BOILER
 			self.boiler = Machinery.Boiler(self.factory, [7.1,0,0])
 			self.machines['boiler'] = self.boiler
@@ -61,7 +61,7 @@ class Factory ():
 			belt_millL.setPosition(-26.8,5.77,-7.143)
 			belt_millL.setEuler(0,11.4,0)
 			self.wheels['millL'] = [wheel_millL]
-			self.belts['millL'] = [belt_millL]
+			self.belts['millL'] = belt_millL
 			gear_millL = belt_millL.getChild('motion gear')
 			gear_millL.setEuler(180,0,0)
 			gear_millL.center(0,0,13.953)
@@ -76,36 +76,38 @@ class Factory ():
 			belt_millR.setPosition(-1.6,5.77,-7.143)
 			belt_millR.setEuler(0,11.4,0)
 			self.wheels['millR'] = [wheel_millR]
-			self.belts['millR'] = [belt_millR]
+			self.belts['millR'] = belt_millR
 			gear_millR = belt_millR.getChild('motion gear')
 			gear_millR.center(0,0,13.953)
 			self.wheels['millR'].append(gear_millR)
-		if 'pump' in args:		#ADD THE 2 PUMPS
-			self.pumpL = Machinery.Pump(self.factory, [-17,2.8,-6.5], [-90,0,0])
-			self.machines['pumpL'] = self.pumpL
+		if 'pumpR' in args:		#ADD THE RIGHT PUMP
+			self.pumpR = Machinery.Pump(self.factory, [-17,2.8,-6.5], [-90,0,0], 'R', self)
+			self.machines['pumpR'] = self.pumpR
 			base1=self.factory.add('models/objects/concrete base.ive')
 			base1.setPosition(-17.5,0,-6.5)
 			base1.scale(.2,.2,.2)
-			self.pumpR = Machinery.Pump(self.factory, [-20.3,2.8,-6.5], [-90,0,0])
-			self.machines['pumpR'] = self.pumpR
+			# wheels and belts
+			wheel_pumpR = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+			wheel_pumpR.setPosition(-16.83,5.77,-7.143)
+			belt_pumpR = self.factory.add('models/objects/belt_pump.ive')
+			belt_pumpR.setPosition(-16.73,5.77,-7.143)
+			belt_pumpR.setEuler(0,85.5,0)
+			self.wheels['pumpR'] = [wheel_pumpR]
+			self.belts['pumpR']  = Machinery.Belt(belt_pumpR)
+		if 'pumpL' in args:		#ADD THE LEFT PUMP
+			self.pumpL = Machinery.Pump(self.factory, [-20.3,2.8,-6.5], [-90,0,0], 'L', self)
+			self.machines['pumpL'] = self.pumpL
 			base2=self.factory.add('models/objects/concrete base.ive')
 			base2.setPosition(-20.8,0,-6.5)
 			base2.scale(.2,.2,.2)
 			# wheels and belts
 			wheel_pumpL = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			wheel_pumpL.setPosition(-16.77,5.77,-7.143)
+			wheel_pumpL.setPosition(-20.13,5.77,-7.143)
 			belt_pumpL = self.factory.add('models/objects/belt_pump.ive')
-			belt_pumpL.setPosition(-16.77,5.77,-7.143)
+			belt_pumpL.setPosition(-20.03,5.77,-7.143)
 			belt_pumpL.setEuler(0,85.5,0)
 			self.wheels['pumpL'] = [wheel_pumpL]
-			self.belts['pumpL']  = [belt_pumpL]
-			wheel_pumpR = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-			wheel_pumpR.setPosition(-20.1,5.77,-7.143)
-			belt_pumpR = self.factory.add('models/objects/belt_pump.ive')
-			belt_pumpR.setPosition(-20.1,5.77,-7.143)
-			belt_pumpR.setEuler(0,85.5,0)
-			self.wheels['pumpR'] = [wheel_pumpR]
-			self.belts['pumpR']  = [belt_pumpR]
+			self.belts['pumpL']  = Machinery.Belt(belt_pumpL)
 		if 'pressL' in args:	#ADD THE 2 PRESSES
 			self.pressL = Machinery.Press(self.factory, [-17.4,0,6.5], [180,0,0])
 			self.machines['pressL'] = self.pressL
@@ -126,7 +128,7 @@ class Factory ():
 #			self.wheels['lavalR'] = [wheel_lavalR]
 #			self.belts['lavalR']  = [belt_lavalR]
 		if 'oilPump' in args:
-			self.oilPump = oilPump.Tanks(self.factory, [-7.65,0,-5.81], [180,0,0])
+			self.oilPump = Machinery.OilPump(self.factory, [-6.03, 0.25, -6.02], [180,0,0])
 			self.machines['oilPump'] = self.oilPump
 		# wheels and belts for the laval sub-system
 		wheel_lavalUp = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
@@ -136,8 +138,8 @@ class Factory ():
 		wheel_lavalDn.setScale(.75,.75,.75)
 		belt_laval = viz.add('models/objects/belt_laval.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 		belt_laval.setPosition(-4.95, 0.893, -6.992)
-		self.wheels['lavalR'] = [wheel_lavalUp, wheel_lavalDn]
-		self.belts['lavalR']  = [Machinery.Belt(belt_laval)]
+		self.wheels['laval'] = [wheel_lavalUp, wheel_lavalDn]
+		self.belts['laval']  = Machinery.Belt(belt_laval)
 				
 		#get all components from machines and store them in factory.components
 		self.AddComponentsToFactory()
@@ -173,7 +175,7 @@ class Factory ():
 #		vessel.setScale(.1,.1,.1)
 #		vessel.setPosition(-25.5,0,-6.5)
 	
-	
+
 	def AddAllTools(self):
 		global fToolsData, fTools
 		for t in self.toolsData.keys():
@@ -216,6 +218,7 @@ class Factory ():
 		self.tools[tool].setParent(self.factory)
 		self.tools[tool].setPosition(self.loader.object.getPosition())
 		self.tools[tool].setEuler(self.loader.object.getEuler())
+		del self.components['mat']
 	
 	def SetCanFull (self, state):
 		self._canCond = state
@@ -255,17 +258,9 @@ class Factory ():
 					w.addAction(vizact.spin(1,0,0, -76*rev,viz.FOREVER))
 			#animate machinery belts
 			if  self.belts.has_key(m):	#check if this machine has wheels
-				for b in self.belts[m]:
-					if m == 'lavalL':
-						b.Start()
-					
-#	def TurnBelt(self):
-#		#belt=oliveFactory.belts['lavalL'][0]
-#		global matrix1, matrix2, belt
-#		matrix1.postTrans(0,.04,0)
-#		matrix2.postTrans(0,-.04,0)
-#		belt.texmat(matrix1,'belt1',0)
-#		belt.texmat(matrix2,'belt2',0)
+				b = self.belts[m]
+				if m == 'lavalL':
+					b.Start()
 		
 	def StopFactory(self):
 		self.started = False
@@ -280,11 +275,12 @@ class Factory ():
 		
 	
 if __name__ == '__main__':
+	import vizcam
 	viz.setMultiSample(8)
 	viz.go()
 
 	viz.phys.enable()
-	viz.eyeheight = 2.0
+	viz.eyeheight(1.75)
 	viz.MainView.setPosition(-10,2,-5)
 	#viz.MainView.setEuler(-90,0,0)
 	#viz.fov(60)
@@ -292,7 +288,15 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
+	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'tanks', 'lavalL', 'lavalR', 'oilPump')
 	oliveFactory = Factory()
-	oliveFactory.AddMachinery(('millR', 'millL', 'pressL', 'pressR', 'loader', 'tanks', 'lavalL', 'lavalR'))
+	oliveFactory.AddMachinery(machines)
 	oliveFactory.AddAllTools()
 	oliveFactory.AddOtherStuff()
+	
+	# pivot around object
+#	cam = vizcam.PivotNavigate(distance=5)
+#	cam.centerNode(oliveFactory.millR.mixedPulp)
+#	cam.centerNode(oliveFactory.pressR.mats)
+#	cam.centerNode(oliveFactory.pumpL.object)
+#	cam.rotateUp(30)
