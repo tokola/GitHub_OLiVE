@@ -25,11 +25,11 @@ class FSM_Actions ():
 		#action list
 		for action in actList:
 			if action == 'detaching_laval_belt':
-				self._factory.lavalL.detachBelt()
+				self._factory.lavalR.detachBelt()
 			elif 'attaching_belt' in action:	#has * at the end
 				if not '*' in action:	#execute the action only the first time
 					print "ATTACHING BELTTTTTTTTTTT by", self._name.getMessage()
-					self._factory.lavalL.attachBelt()
+					self._factory.lavalR.attachBelt()
 				if self._selected == 'belt':#the one holding the belt should...	
 					self.DropObject(False)	#drop it without putting in back in place
 			########## ENGINE ACTIONS ##############
@@ -50,9 +50,9 @@ class FSM_Actions ():
 				#self._factory.factory.addAction(vizact.waittime(1))
 				#self._factory.factory.addAction(vizact.call(self._factory.boiler.CoalAction, 2))
 			elif action == 'starting_timer':
-				viz.starttimer(10, 30, 0)	#timer for the first warning
-				viz.starttimer(15, 40, 0)	#timer for the second warning
-				viz.starttimer(20, 45, 0)	#timer for stopping factory
+				viz.starttimer(10, 300, 0)	#timer for the first warning
+				viz.starttimer(15, 450, 0)	#timer for the second warning
+				viz.starttimer(20, 600, 0)	#timer for stopping factory
 			elif action == 'stopping_timer':
 				viz.killtimer(10)
 				viz.killtimer(15)
@@ -64,6 +64,8 @@ class FSM_Actions ():
 				exec('self._factory.'+machine+'.ChangePressure(int('+pressure+'))')
 			elif action == 'lighting_furnace':	#coals appear inside furnace and light up
 				self._factory.boiler.CoalAction(2)
+				self._factory.factory.addAction(vizact.waittime(2))
+				self._factory.factory.addAction(vizact.call(self._factory.boiler.OpenCloseHatch, False))
 			elif action == 'dying_away_fire':	#fire dies away and coals are wasted
 				self._factory.boiler.CoalAction(3)
 			elif action == 'renewing_fire':	#fire dies away and coals are wasted
@@ -72,13 +74,12 @@ class FSM_Actions ():
 				self._factory.boiler.CoalAction(5)
 			########## MILL ACTIONS ##############
 			elif 'loading_mill' in action:	#has * at the end
-				if '*' in action:	#don't let the second player execute the action again
-					return
-				LR = action[-1:]
-				viz.starttimer(ord(LR), 5, 0)	#timer while loading the olives L:76, R:82
-				mill = 'mill'+ LR
-				sackID = action[-2:]
-				exec('self._factory.'+mill+'.SackAnim(\"'+sackID+'\")')
+				if not '*' in action:	#don't let the second player execute the animation again
+					LR = action[-1:]
+					viz.starttimer(ord(LR), 5, 0)	#timer while loading the olives -> anim-finished
+					mill = 'mill'+ LR
+					sackID = action[-2:]
+					exec('self._factory.'+mill+'.SackAnim(\"'+sackID+'\")')
 			elif 'starting_crash' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
@@ -86,30 +87,31 @@ class FSM_Actions ():
 			elif 'pouring_paste' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
-				viz.starttimer(ord(LR), 5, 0)	#timer while pouring the paste L:76, R:82
+				viz.starttimer(ord(LR), 5, 0)	#timer while pouring the paste -> anim-finished
 				exec('self._factory.'+mill+'.PasteInTank()')
 			elif 'wasting_paste' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
-				viz.starttimer(ord(LR), 3, 0)	#timer while wasting the paste in the mill
-				exec('self._factory.'+mill+'.WastingPaste()')
-			elif 'transfering_tank' in action:	# used as delay to send the 'anim-finished' event
+				viz.starttimer(ord(LR), 3, 0)	#timer while wasting the paste -> anim-finished
+				exec('self._factory.'+mill+'.WastePaste()')
+			elif 'transfering_tank' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
-				viz.starttimer(ord(LR), 3, 0)	#timer while transferring the tank L:76, R:82
+				viz.starttimer(ord(LR), 3, 0)	#timer while transferring the tank -> anim-finshed
 				exec('self._factory.'+mill+'.MovingTank()')
-			elif 'resetting_mill' in action:	# used as delay to send the 'anim-finished' event
+			elif 'resetting_mill' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
-				viz.starttimer(ord(LR), 1, 0)	#timer while resetting mill
-				exec('self._factory.'+mill+'.ResettingMill()')
+				viz.starttimer(ord(LR), 1, 0)	#timer while resetting mill -> anim-finshed
+				exec('self._factory.'+mill+'.ResetMill()')
 			elif 'timerM' in action:
 				LR = action[-1:]
 				action = action.replace(LR, '')	#delete the last character
 				timerTag = action.partition('_')[2]
 				timerCode = action.partition('_')[0][-1:]	#1=set timer, 0=kill timer
 				#e.g., (1,5) -> set timer id=77 (76+1) or id=83 (82+1) for 5 secs
-				timers = {'dilute':(1,20), 'thick':(2,10), 'ready':(3,10), 'hot':(4,15), 'wasted':(5,25)}
+				#wasted is called with thick and hot and needs to expire later
+				timers = {'dilute':(1,30), 'thick':(2,30), 'ready':(3,45), 'hot':(4,30), 'wasted':(5,60)}
 				if int(timerCode) == 1:
 					viz.starttimer(ord(LR)+timers[timerTag][0], timers[timerTag][1], 0)
 				else:
@@ -126,8 +128,10 @@ class FSM_Actions ():
 			elif action == 'removing_pulp':
 				self._factory.loader.PulpInTank(-1)
 			elif action == 'filling_mat':
-				self._factory.loader.FillMat()
-				self._CanFull(False)	# sent to player holding can
+				if not '*' in action:	#don't let the second player execute the action again
+					self._factory.loader.FillMat()
+				if self._selected == 'canful':	#the one holding the can should...
+					self._CanFull(False)	#fill up the can
 			elif action == 'picking_mat':
 				self.AddToToolbox('mat')
 				self._factory.loader.PickMat()
@@ -138,29 +142,39 @@ class FSM_Actions ():
 			elif 'loading_press' in action:
 				LR = action[-1:]
 				press = 'press'+ LR
-				exec('self._factory.'+press+'.LoadMat()')
+				fullPress = eval('self._factory.'+press+'.LoadMat()')
+				if fullPress:
+					viz.starttimer(ord(LR)+501, 1, 0)	#timer for filling up press	
 			elif action == 'dropping_mat':
 				self.DropObject(putBack=False)
+			elif 'fillingup_press' in action:
+				LR = action[-1:]					#L:76, R:82
+				press = 'press'+ LR
+				exec('self._factory.'+press+'.FillUp()')
 			elif 'starting_press' in action:	# called from the pump
 				LR = action[-1:]
-				viz.starttimer(ord(LR)+501, 1, 0)	#timer for staring press L:76, R:82
+				viz.starttimer(ord(LR)+502, 1, 0)	#timer for staring press
 			elif 'finishing_press' in action:	# called from the pump
 				LR = action[-1:]
-				viz.starttimer(ord(LR)+502, 1, 0)	#timer for finishing press L:76, R:82
+				viz.starttimer(ord(LR)+503, 1, 0)	#timer for finishing press
 			elif 'resetting_press' in action:	# called from the pump
 				LR = action[-1:]
-				viz.starttimer(ord(LR)+503, 1, 0)	#timer for releasing press L:76, R:82
+				viz.starttimer(ord(LR)+504, 1, 0)	#timer for releasing press
 			elif 'releasing_press' in action:	# used as delay to send the 'anim-finished' event
 				LR = action[-1:]
 				press = 'press'+ LR
-				viz.starttimer(ord(LR)+500, 3, 0)
-				exec('self._factory.'+press+'.Releasing()')
+				viz.starttimer(ord(LR)+500, 10, 0)
+				exec('self._factory.'+press+'.Releasing(10)')
 			elif 'pressing_press' in action:
 				LR = action[-1:]
 				press = 'press'+ LR
 				exec('self._factory.'+press+'.Pressing()')
+			elif 'removing_mats' in action:
+				LR = action[-1:]
+				press = 'press'+ LR
+				exec('self._factory.'+press+'.RestoreMats()')
 			######## PUMP ACTIONS ###############
-			elif 'changing_wheel' in action:
+			elif 'starting_pump' in action:
 				LR = action[-1:]
 				pump = 'pump'+ LR
 				func = 'self._factory.'+pump+'.ChangeGuide, 1'
@@ -168,6 +182,15 @@ class FSM_Actions ():
 				func = 'self._factory.'+pump+'.StopCrazy'
 				exec('self._factory.factory.addAction(vizact.call('+func+'))')
 				func = 'self._factory.'+pump+'.SetMotion'
+				exec('self._factory.factory.addAction(vizact.call('+func+'))')
+			elif 'stopping_pump' in action:
+				LR = action[-1:]
+				pump = 'pump'+ LR
+				func = 'self._factory.'+pump+'.ChangeGuide, -1'
+				exec('self._factory.factory.addAction(vizact.call('+func+'))')
+				func = 'self._factory.'+pump+'.StartCrazy'
+				exec('self._factory.factory.addAction(vizact.call('+func+'))')
+				func = 'self._factory.'+pump+'.EndMotion'
 				exec('self._factory.factory.addAction(vizact.call('+func+'))')
 			elif 'opening_bypass' in action:
 				LR = action[-1:]
@@ -177,6 +200,14 @@ class FSM_Actions ():
 				LR = action[-1:]
 				pump = 'pump'+ LR
 				exec('self._factory.'+pump+'.TurnValve(-1)')
+			elif 'lifting_bar' in action:
+				LR = action[-1:]
+				pump = 'pump'+ LR
+				exec('self._factory.'+pump+'.LiftBar(True)')
+			elif 'dropping_bar' in action:
+				LR = action[-1:]
+				pump = 'pump'+ LR
+				exec('self._factory.'+pump+'.LiftBar(False)')
 			elif 'damaging_pump' in action:
 				LR = action[-1:]
 				pump = 'pump'+ LR

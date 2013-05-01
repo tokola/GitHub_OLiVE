@@ -20,13 +20,16 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-MACHINERY = ('boiler', 'engine', 'lavalL', 'millR', 'pressR', 'pumpR', 'loader')
+MACHINERY = ('boiler', 'engine', 'tanks', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader')
+#MACHINERY = ('boiler', 'engine', 'tanks', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL')
 EYEHEIGHT = 1.75
+DEVICE = 'XBOX'
 
 ### MAKE THE DIFFERENT VIEWS ###
 
 gPlayers = {}
-gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,EYEHEIGHT,0]},
+
+gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [16,EYEHEIGHT,5]},
                2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
                3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
 
@@ -43,9 +46,9 @@ def splitViews ():
 		p._view.setPosition(gPlayerData[i]['pos'])
 #		p._view.collision(viz.ON)
 	# assign the joystick to each player
-	j1 = Interaction.Joystick(p1._window, p1)
-	j2 = Interaction.Joystick(p2._window, p2)
-	j3 = Interaction.Joystick(p3._window, p3)
+	j1 = Interaction.Joystick(p1._window, p1, DEVICE)
+	j2 = Interaction.Joystick(p2._window, p2, DEVICE)
+	j3 = Interaction.Joystick(p3._window, p3, DEVICE)
 	# set the avatar for each player
 	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'], EYEHEIGHT)
 	a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
@@ -76,7 +79,7 @@ def checkCollabActivity ():
 	objByPlayer = {}
 	for pl, obj in pickingObjs.iteritems():
 		objByPlayer.setdefault(obj, []).append(pl)
-	# chnage the color according to how many interact with the same object
+	# change the color according to how many interact with the same object
 	for plrs in objByPlayer.values():
 		if len(plrs) == 1:
 			plrs[0].ChangePickColor('1P')
@@ -171,8 +174,6 @@ def loadMachFSM_Xl():
 		if inputs['info'] == ['']: 
 			del inputs['info'][0]
 		STATES[m][state]['inputs'][stateData[2]] = inputs
-		
-	#print STATES
 	
 def loadFactFSM_Xl():
 	import xlrd	#load the library for reading Excel files
@@ -194,10 +195,11 @@ def loadFactFSM_Xl():
 		FaSTATES.setdefault(state, machStates)
 	print FaSTATES
 
-def start (*args):	
-	print "Game started!"
-	m = args[0]
-	return m+'/idle', ([], None)
+def ReloadFSM():
+	loadMachFSM_Xl()
+#	loadFactFSM_Xl()
+#	(actions, message) = SyncFactoryStates ('FACTORY/START')
+#	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 
 def MachineState (mach, state, inp, sync=False):
 	global STATES
@@ -245,6 +247,7 @@ def SyncFactoryStates (state):
 					newState = st
 			#print "MACHINE:", mach	
 			try:	#change machine to the new state, if there is one defined
+				olivePress.machines[mach]	#this is used to prevent code running for machines not loaded
 				print upper(newState), "-> new state of machine:", mach 
 				FSM[mach].set_start(newState)
 				(a, m) = FSM[mach].evaluate_state('entry', synch=False)
@@ -273,74 +276,59 @@ def initialize ():
 	
 	olivePress.AddMachinery(MACHINERY) #, 'mill', 'pump', 'press')
 	olivePress.AddAllTools()
+	olivePress.AddOtherStuff()
 	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
 	
 	(actions, message) = SyncFactoryStates ('FACTORY/START')
-	#(actions, message) = FSM['boiler'].evaluate_state("START")
-	#(actions, message) = FSM['engine'].evaluate_state("START")
 	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 
 vizact.onkeydown('i', initialize)
-vizact.onkeydown('s', olivePress.StartFactory)
-
+vizact.onkeydown('s', olivePress.StartFactory)	
+vizact.onkeydown('r', ReloadFSM)
 
 initialize()
 
 
 def timerExpire(id):
 	print "expiring...", id
+	
 	# TIMERS FOR BOILER
 	if id in [10, 15, 20]:	# timers for boiler alerts
 		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'-mins-later')
+		
 	# TIMERS FOR MILLS [millL: 76-81, millR: 82-87]
 	elif id in [76, 82]:	# timer for mill loading expiration
 		(actions, message) = FSM['mill'+chr(id)].evaluate_state('anim-finished')
-	elif id in [77, 83]:	# timer for paste to be diluted
-		if id < 82: id = 76
-		else: id = 82
-		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-dilute')
-	elif id in [78, 84]:	# timer for paste being too thick (display warning)
-		if id < 82: id = 76	# Left Mill
-		else: id = 82		# Right Mill
-		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-thick')
-	elif id in [79, 85]:	# timer for paste being ready
-		if id < 82: id = 76
-		else: id = 82
-		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-ready')
-	elif id in [80, 86]:	# timer for paste being too hot (display warning)
-		if id < 82: id = 76
-		else: id = 82
-		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-hot')
-	elif id in [81, 87]:	# timer for paste being wasted
-		if id < 82: id = 76
-		else: id = 82
-		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-wasted')
+	elif id in range(77, 88): 
+		#77: time for dilusion, 78: thick alert, 79: ready to remove, 80: very hot warning 
+		animsL = {77: 'dilute', 78: 'thick', 79: 'ready', 80: 'hot', 81: 'wasted'}
+		animsR = {83: 'dilute', 84: 'thick', 85: 'ready', 86: 'hot', 87: 'wasted'}
+		id, code = getTimerIDCode(id, animsL, animsR)
+		(actions, message) = FSM['mill'+chr(id)].evaluate_state('paste-'+code)
+	
 	# Timers for millR
 	elif id == 600:			# tranfer tank animation expired (millR)
 		(actions, message) = FSM['millR'].evaluate_state('transfer-done')
 	elif id == 601:			# reset mill to empty state (millR)
 		(actions, message) = FSM['millR'].evaluate_state('mill-reset')
-	# TIMERS FOR PRESSES [pumpL: 576-579, pumpR: 582-585]
+		
+	# TIMERS FOR PRESSES [pumpL: 576-580, pumpR: 582-586]
 	elif id in [576, 582]:	# timer for press releasing animation expiration
 		(actions, message) = FSM['press'+chr(id-500)].evaluate_state('anim-finished')
-	elif id in [577, 583]:	# timer called when the pump reaches 1500psi (pressure good)
-		(actions, message) = FSM['press'+chr(id-501)].evaluate_state('press-start')
-	elif id in [578, 584]:	# timer called when the pump reaches 4000psi (pressure done)
-		(actions, message) = FSM['press'+chr(id-502)].evaluate_state('press-finish')
-	elif id in [579, 585]:	# timer called when the pump bypass valve is closed
-		(actions, message) = FSM['press'+chr(id-503)].evaluate_state('press-reset')
+	elif id in range(577, 588): 
+		#577: time to fillup, 578: pump 1500psi, 579: pump 4000psi, 580: bypass valve closed
+		animsL = {577: 'fillup', 578: 'start', 579: 'finish', 580: 'reset'}
+		animsR = {583: 'fillup', 584: 'start', 585: 'finish', 586: 'reset'}
+		id, code = getTimerIDCode(id, animsL, animsR)
+		(actions, message) = FSM['press'+chr(id)].evaluate_state('press-'+code)
+
 	# TIMERS FOR PUMPS [pumpL: 177-181, pumpR: 183-187]
 	elif id in [176, 182]:	# timer for pump damage expiration
 		(actions, message) = FSM['pump'+chr(id-100)].evaluate_state('anim-finished')
 	elif id in range(177, 188):	# timers for pump animations
 		animsL = {177: 'good', 178: 'safe', 179: 'done', 180: 'high', 181: 'max'}
 		animsR = {183: 'good', 184: 'safe', 185: 'done', 186: 'high', 187: 'max'}
-		if id in animsL: 
-			code = animsL[id]
-			id = 76
-		else: 
-			code = animsR[id]
-			id = 82
+		id, code = getTimerIDCode(id, animsL, animsR)
 		(actions, message) = FSM['pump'+chr(id)].evaluate_state('pressure-'+code)
 		
 	#tell player 1 to broadcast messages and actions
@@ -348,6 +336,16 @@ def timerExpire(id):
 		
 viz.callback(viz.TIMER_EVENT, timerExpire)
 
+def getTimerIDCode (id, anL, anR):
+	if id in anL: 
+		code = anL[id]
+		id = 76
+	else: 
+		code = anR[id]
+		id = 82
+	return id, code
+	
+#----------------------------------------------------------------
 def applyNormalToMillR():
 #	kazani=olivePress.machines['millR'].object.getChild('kazani')
 	kazani=viz.add('models/tank.osgb')

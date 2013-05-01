@@ -12,13 +12,12 @@ FPS = 60
 
 class Joystick(viz.EventClass):
     """This is the Joystick Interacion class"""
-    def __init__ (self, win, PlayViewObj=None):
+    def __init__ (self, win, PlayViewObj=None, device='RUMBLEPAD'):
         self.joystick = vizjoy.add()
         self.view = win.getView()
         self.window = win
         self.toolActive = 0
         self.moveCursor = False
-        self._updateFunc = vizact.onupdate(0, self.UpdateJoystick)
         self.filter = LowPassDynamicFilter(0.5, 5, 10.0, 200.0)
         self.player = PlayViewObj
         #Call super class constructor to create different callbacks for every joystick
@@ -26,15 +25,25 @@ class Joystick(viz.EventClass):
         self.callback(vizjoy.BUTTONDOWN_EVENT, self.joydown)
         self.callback(vizjoy.BUTTONUP_EVENT, self.joyup)
         self.callback(vizjoy.HAT_EVENT, self.joyhat)
-        #set the PlayerView instance items controlled by the joystick
+        #decide the button actions based on the joystick
+        self._updateFunc = vizact.onupdate(0, self.UpdateJoystick)
+        if 'Rumblepad' in self.joystick.getName():
+            self.device = 'RUMBLEPAD'
+            self.actions = {'prev':[1,5], 'next':[3,6], 'pick':[2, 7, 8, 11, 12], 'drop':4, 'hud':9}
+        elif 'Xbox' in self.joystick.getName():
+            self.device = 'XBOX'
+            self.actions = {'prev':[3,5], 'next':[2,6], 'pick':[1, 9, 10], 'drop':4, 'hud':7}
+        else:
+            self.device = 'XBOX'
+            print "UNIDENTIFIED JOYSTICK"
         
     def UpdateJoystick(self):
-        global v1, v2, v3, v4
         #Get the joystick position
         x,y,z = self.joystick.getPosition()
-        twist = self.joystick.getTwist()
         rx,ry,rz = self.joystick.getRotation()
-        twist = rz
+        twist = {'RUMBLEPAD': rz, 'XBOX': ry}[self.device]
+        # twist = self.joystick.getTwist()
+        # slider = self.joystick.getSlider()
         
         #Move the viewpoint forward/backward based on y-axis value
         if abs(y) > 0.2:
@@ -46,20 +55,47 @@ class Joystick(viz.EventClass):
             self.view.setEuler([TURN_SPEED * x,0,0], viz.BODY_ORI,viz.REL_PARENT)
             #self.view.setEuler([viz.elapsed() * TURN_SPEED * x,0,0], viz.BODY_ORI,viz.REL_PARENT)
         
-        #Tilt the head up and down until 45 degrees
-#        if abs(twist) > 0.2: #Make sure value is above a certain threshold
-#            if abs(self.view.getEuler()[1])<=45:
-#                self.view.setEuler([0,twist,0],viz.HEAD_ORI,viz.REL_PARENT)
-#        else:
-#            self.view.setEuler([0,0,0],viz.HEAD_ORI,viz.ABS_PARENT)
+        #Yaw the head left and right based on rx-axis value
+#        if abs(rx) > 0.2:
+#            self.view.setEuler([TURN_SPEED * rx,0,0], viz.BODY_ORI,viz.REL_PARENT)
+#            #self.view.setEuler([viz.elapsed() * TURN_SPEED * rx,0,0], viz.BODY_ORI,viz.REL_PARENT)
+        
+        #Tilt the head up and down until 60 degrees
+        if abs(twist) < .104 :
+            twist = 0
+        newTwist = self.filter.Apply(Vector3(0, twist, 0), FPS)
+        #if abs(twist) > 0.05: #Make sure value is above a certain threshold
+        self.view.setEuler([0,newTwist.y*60,0],viz.HEAD_ORI,viz.ABS_PARENT)
+        #Move the cursor towards the direction of the cross buttons (hat)        
+        self.MoveCursor()
+        
+    def UpdateJoystickRev(self):
+        #Get the joystick position
+        x,y,z = self.joystick.getPosition()
+        rx,ry,rz = self.joystick.getRotation()
+        twist = {'RUMBLEPAD': z, 'XBOX': y}[self.device]
+        # twist = self.joystick.getTwist()
+        
+        #Move the viewpoint forward/backward based on y-axis value
+        if abs(ry) > 0.2:
+            self.view.move([0,0,MOVE_SPEED * -ry], viz.BODY_ORI)
+            #self.view.move([0,0,viz.elapsed() * MOVE_SPEED * -ry], viz.BODY_ORI)
+
+        #Move the viewpoint left/right based on x-axis value
+        if abs(rx) > 0.2:
+            self.view.setEuler([TURN_SPEED * rx,0,0], viz.BODY_ORI,viz.REL_PARENT)
+            #self.view.setEuler([viz.elapsed() * TURN_SPEED * rx,0,0], viz.BODY_ORI,viz.REL_PARENT)
+
         #Tilt the head up and down until 45 degrees
         if abs(twist) < .104 :
             twist = 0
         newTwist = self.filter.Apply(Vector3(0, twist, 0), FPS)
         #if abs(twist) > 0.05: #Make sure value is above a certain threshold
         self.view.setEuler([0,newTwist.y*60,0],viz.HEAD_ORI,viz.ABS_PARENT)
+        #Move the cursor towards the direction of the cross buttons (hat)        
+        self.MoveCursor()
         
-        #Move the cursor towards the direction of the cross buttons (hat)
+    def MoveCursor (self):
         if isinstance(self.moveCursor, list):
             # prevent the cursor from moving outside of the window
             objPos = self.toolActive.getDst().getPosition()
@@ -75,46 +111,27 @@ class Joystick(viz.EventClass):
                 self.moveCursor[1] = 0
             self.toolActive.preTrans(self.moveCursor)
             
-        # Check for button presses
-#        try:
-#            len(self.player._toolbox) > 0
-#            if self.joystick.isButtonDown(1):
-#                self.player.SelectItem(-1)
-#                toolLink = self.player.HoldObject()
-#                self.ControlObject(toolLink)
-#            if self.joystick.isButtonDown(3):
-#                self.player.SelectItem(1)
-#                toolLink = self.player.HoldObject()
-#                self.ControlObject(toolLink)
-##            if e.button == 2:
-##                toolLink = self.player.HoldObject()
-##                self.ControlObject(toolLink)
-#            if self.joystick.isButtonDown(4):
-#                self.player.DropObject()
-#            if self.joystick.isButtonDown(2):
-#                self.player.PickObject()
-#        except AttributeError:
-#            pass
-            
-    
     def joydown(self, e):
         if e.joy != self.joystick:
             return
         try:
+            print e.button
             len(self.player._toolbox) > 0
-            if e.button in [1, 5]:
+            if e.button in self.actions['prev']:
                 self.player.SelectItem(-1)
                 toolLink = self.player.HoldObject()
-                self.ControlObject(toolLink)
-            if e.button in [3, 6]:
+                if toolLink != False:
+                    self.ControlObject(toolLink)
+            if e.button in self.actions['next']:
                 self.player.SelectItem(1)
                 toolLink = self.player.HoldObject()
-                self.ControlObject(toolLink)
-            if e.button == 4:
-                self.player.DropObject()
-            if e.button in [2, 7, 8, 11, 12]:
+                if toolLink != False:
+                    self.ControlObject(toolLink)
+            if e.button in self.actions['pick']:
                 self.player.PickObject(True)
-            if e.button == 9:
+            if e.button == self.actions['drop']:
+                self.player.DropObject()
+            if e.button == self.actions['hud']:
                 self.player.HideShowHUD()
         except AttributeError:
             pass
@@ -124,7 +141,7 @@ class Joystick(viz.EventClass):
         if e.joy != self.joystick:
             return
         try:
-            if e.button in [2, 11, 12]:
+            if e.button in self.actions['pick']:
                 self.player.PickObject(False)
         except AttributeError:
             pass

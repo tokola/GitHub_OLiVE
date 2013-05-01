@@ -92,7 +92,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				newAlert = viz.addTexQuad(size=1.25)
 				newAlert.texture(viz.addTexture('textures/alert_icon.png'))
 				newAlert.renderOnlyToWindows([self._window])
-				newAlert.setPosition(mPos[0], 0.5, mPos[2])
+				newAlert.setPosition(mPos[0], 0, mPos[2])
 				newAlert.setEuler(0, 90, 0)
 				self._alerts[machine] = newAlert
 		
@@ -162,6 +162,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				self._alert.bordercolor(.5,0.5,0,1)
 			if nextKey != 'info':
 				alertObj = self._alerts[nextKey]
+				yield viztask.addAction(alertObj, fade_out)
+				yield viztask.addAction(alertObj, fade_in)
 				yield viztask.addAction(alertObj, fade_out)
 				yield viztask.addAction(alertObj, fade_in)
 				yield viztask.addAction(alertObj, fade_out)
@@ -328,14 +330,20 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def SelectItem(self, prevNext):	#-1 for previous, 1 for next
 		self.ResetPick()
 		if self._selected == None:
-			self.ZoomIcon('hand', 1)
+			if prevNext == 1:
+				self.ZoomIcon('hand', 1)
+			else:
+				lastTool = next(reversed(self._toolbox))
+				self.ZoomIcon(lastTool, 1)
 		else:
-			if len(self._toolbox) > 1 :
+			if len(self._toolbox) >= 1 :
 				toolNo = self._toolbox.keys().index(self._selected)
 				if toolNo + prevNext > len(self._toolbox) - 1:
-					self.ZoomIcon('hand', 1)
+#					self.ZoomIcon('hand', 1)	#recursive tool selection
+					self.ZoomIcon(None, 1)		#deselect last tool
 				elif toolNo + prevNext < 0:
-					self.ZoomIcon(self._toolbox.keys()[len(self._toolbox)-1], 1)
+					self.ZoomIcon(None, 1)		#deselect first tool
+#					self.ZoomIcon(self._toolbox.keys()[len(self._toolbox)-1], 1)	#recursive tool selection
 				else:
 					self.ZoomIcon(self._toolbox.keys()[toolNo + prevNext], 1)
 	
@@ -344,8 +352,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			if self._selected != None:	#zoom out the previously selected icon
 				self.ZoomIcon(self._selected, 0)
 			self._selected = icon
-			self._toolbox[icon]['obj'].setScale(1.1,.45,1)
-			self._toolbox[icon]['obj'].texture(self._toolbox[icon]['sel'])
+			if self._selected != None:
+				self._toolbox[icon]['obj'].setScale(1.1,.45,1)
+				self._toolbox[icon]['obj'].texture(self._toolbox[icon]['sel'])
 		else:
 			self._toolbox[icon]['obj'].setScale(1,.4,1)
 			self._toolbox[icon]['obj'].texture(self._toolbox[icon]['tex'])
@@ -354,6 +363,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		if obj == None:
 			obj = self._selected
 		self.LetObject()
+		if self._selected == None:	#No object selected (at the end of the list)
+			return False
 		obj = self._factory.FilterAddedObj(obj)	#filters out 'ful' for the can
 		self._holding = viz.add('models/objects/tool_'+obj+'.ive')
 		self._holding.setScale(.075,.075,.075)
@@ -390,7 +401,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 					# get the component name from the object to be picked from the factory components list
 					held = self._selected
 					comp = [key for key, value in self._factory.components.iteritems() if value == self._picking][0]
-					print "Interacting with %s on %s" %(held, comp)
+					pressOrRelease = {True:'Interacting with', False:'Releasing'}[press]
+					print "%s %s on %s" %(pressOrRelease, held, comp)
 					self._iMach = self._factory.componentPar[comp]
 					(mActions, mMessage) = self._fsm[self._iMach].evaluate_multi_input(held+'_'+comp, self, self._pressed)
 					self.BroadcastActionsMessages(mActions, mMessage)
