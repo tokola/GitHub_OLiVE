@@ -17,7 +17,7 @@ class Joystick(viz.EventClass):
         self.view = win.getView()
         self.window = win
         self.toolActive = 0
-        self.moveCursor = False
+        self.moveCursor = False 
         self.filter = LowPassDynamicFilter(0.5, 5, 10.0, 200.0)
         self.player = PlayViewObj
         #Call super class constructor to create different callbacks for every joystick
@@ -32,7 +32,10 @@ class Joystick(viz.EventClass):
             self.actions = {'prev':[1,5], 'next':[3,6], 'pick':[2, 7, 8, 11, 12], 'drop':4, 'hud':9}
         elif 'Xbox' in self.joystick.getName():
             self.device = 'XBOX'
-            self.actions = {'prev':[3,5], 'next':[2,6], 'pick':[1, 9, 10], 'drop':4, 'hud':7}
+            self.actions = {'prev':[3], 'next':[2], 'pick':[1, 9, 10, 5, 6], 'drop':4, 'hud':7}
+            self.triggerActive = True   #False after trigger buttons are pressed
+            #Create a callback to handle the expiring trigger (de)activation events
+            self.callback(viz.TIMER_EVENT, self.timerExpire)
         else:
             self.device = 'XBOX'
             print "UNIDENTIFIED JOYSTICK"
@@ -68,6 +71,9 @@ class Joystick(viz.EventClass):
         self.view.setEuler([0,newTwist.y*60,0],viz.HEAD_ORI,viz.ABS_PARENT)
         #Move the cursor towards the direction of the cross buttons (hat)        
         self.MoveCursor()
+        #Check if the Xbox analog trigger was pressed and change the tool accordingly
+        if self.device == 'XBOX':
+            self.CheckTrigger()
         
     def UpdateJoystickRev(self):
         #Get the joystick position
@@ -87,7 +93,7 @@ class Joystick(viz.EventClass):
             #self.view.setEuler([viz.elapsed() * TURN_SPEED * rx,0,0], viz.BODY_ORI,viz.REL_PARENT)
 
         #Tilt the head up and down until 45 degrees
-        if abs(twist) < .104 :
+        if abs(twist) < .15 :
             twist = 0
         newTwist = self.filter.Apply(Vector3(0, twist, 0), FPS)
         #if abs(twist) > 0.05: #Make sure value is above a certain threshold
@@ -110,7 +116,22 @@ class Joystick(viz.EventClass):
             if self.moveCursor[1] > 0 and self.window.worldToScreen(objPos)[1] >= .95:
                 self.moveCursor[1] = 0
             self.toolActive.preTrans(self.moveCursor)
+    
+    def CheckTrigger(self):
+        if self.joystick.getSlider() < -.25 and self.triggerActive:
+            self.triggerActive = False
+            self.starttimer(1, .25, 0)
+            self.SelectTool(1)
+            return
+        if self.joystick.getSlider() > .25 and self.triggerActive:
+            self.triggerActive = False
+            self.starttimer(-1, .25, 0)
+            self.SelectTool(-1)
             
+    def timerExpire (self, num):
+        self.killtimer(num)
+        self.triggerActive = True
+        
     def joydown(self, e):
         if e.joy != self.joystick:
             return
@@ -118,15 +139,9 @@ class Joystick(viz.EventClass):
             print e.button
             len(self.player._toolbox) > 0
             if e.button in self.actions['prev']:
-                self.player.SelectItem(-1)
-                toolLink = self.player.HoldObject()
-                if toolLink != False:
-                    self.ControlObject(toolLink)
+                self.SelectTool(-1)
             if e.button in self.actions['next']:
-                self.player.SelectItem(1)
-                toolLink = self.player.HoldObject()
-                if toolLink != False:
-                    self.ControlObject(toolLink)
+                self.SelectTool(1)
             if e.button in self.actions['pick']:
                 self.player.PickObject(True)
             if e.button == self.actions['drop']:
@@ -174,9 +189,13 @@ class Joystick(viz.EventClass):
             else:
                 self.moveCursor = False
     
-    def ControlObject (self,obj):
-        self.toolActive = obj
-    
+    #gets a link of the held tool to the center of the viewpoint
+    def SelectTool(self, prevNext):
+        self.player.SelectItem(prevNext)
+        toolLink = self.player.HoldObject()
+        if toolLink != False:
+            self.toolActive = toolLink
+                    
 if __name__ == '__main__':
 
     viz.setMultiSample(2)

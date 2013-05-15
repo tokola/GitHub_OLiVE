@@ -99,7 +99,7 @@ class StateMachine ():
 		return (acts, mess)
 	
 	def filterMultiActions(self, act):
-		#actions with * at the end will be broadcast to all players
+		#actions with * at the end will be broadcast to all players involved in the action
 		acti = [a.split('*')[0] for a in act if '*' in a]
 		if len(acti) > 0:
 			return acti
