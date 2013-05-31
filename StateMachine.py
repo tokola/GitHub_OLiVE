@@ -106,7 +106,7 @@ class StateMachine ():
 		
 	def log_user_data (self, user_input, actions):
 		for u, i in user_input.iteritems():
-			self.log.setdefault(u._name.getMessage(), []).append((i, actions, round(viz.tick(), 2)))
+			self.log.setdefault(u._player, []).append((i, actions, round(viz.tick(), 2)))
 		#print "Log file:", self.log
 			
 if __name__ == '__main__':

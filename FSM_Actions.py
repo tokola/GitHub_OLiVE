@@ -24,16 +24,8 @@ class FSM_Actions ():
 		if not ex: return
 		#action list
 		for action in actList:
-			if action == 'detaching_laval_belt':
-				self._factory.lavalR.detachBelt()
-			elif 'attaching_belt' in action:	#has * at the end
-				if not '*' in action:	#execute the action only the first time
-					print "ATTACHING BELTTTTTTTTTTT by", self._name.getMessage()
-					self._factory.lavalR.attachBelt()
-				if self._selected == 'belt':#the one holding the belt should...	
-					self.DropObject(False)	#drop it without putting in back in place
 			########## ENGINE ACTIONS ##############
-			elif action == 'turning_valve_on':
+			if action == 'turning_valve_on':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_openValve, 3))
 			elif action == 'turning_valve_off':
 				self._factory.factory.addAction(vizact.call(self._factory.engine.E_closeValve, 3))
@@ -58,7 +50,7 @@ class FSM_Actions ():
 				viz.killtimer(15)
 				viz.killtimer(20)
 			elif 'pressure' in action:
-				#get the pressure and send it as an argument to machine specified by the first word
+				#get the pressure and send it as an argument to the machine specified by the first word
 				machine = action.partition('_')[0]
 				pressure = action.rpartition('_')[2][:-3]
 				exec('self._factory.'+machine+'.ChangePressure(int('+pressure+'))')
@@ -72,6 +64,7 @@ class FSM_Actions ():
 				self._factory.boiler.CoalAction(4)
 			elif action == 'exhausting_fire':	#fire dies away and coals are wasted
 				self._factory.boiler.CoalAction(5)
+				
 			########## MILL ACTIONS ##############
 			elif 'loading_mill' in action:	#has * at the end
 				if not '*' in action:	#don't let the second player execute the animation again
@@ -94,15 +87,19 @@ class FSM_Actions ():
 				mill = 'mill'+ LR
 				viz.starttimer(ord(LR), 3, 0)	#timer while wasting the paste -> anim-finished
 				exec('self._factory.'+mill+'.WastePaste()')
-			elif 'transfering_tank' in action:
+			elif 'transferring_tank' in action:
+				if not '*' in action:	#don't let the second player execute the animation again
+					LR = action[-1:]
+					mill = 'mill'+ LR
+					viz.starttimer(ord(LR), 10, 0)	#timer while transferring the tank -> anim-finshed
+					exec('self._factory.'+mill+'.MoveTank()')
+			elif 'finishing_transfer' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
-				viz.starttimer(ord(LR), 3, 0)	#timer while transferring the tank -> anim-finshed
-				exec('self._factory.'+mill+'.MovingTank()')
+				viz.starttimer(ord(LR), 4, 0)	#timer while big tank fills up -> anim-finshed
 			elif 'resetting_mill' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
-				viz.starttimer(ord(LR), 1, 0)	#timer while resetting mill -> anim-finshed
 				exec('self._factory.'+mill+'.ResetMill()')
 			elif 'timerM' in action:
 				LR = action[-1:]
@@ -116,6 +113,7 @@ class FSM_Actions ():
 					viz.starttimer(ord(LR)+timers[timerTag][0], timers[timerTag][1], 0)
 				else:
 					viz.killtimer(ord(LR)+timers[timerTag][0])
+					
 			########## LOADER ACTIONS ##############
 			elif action == 'serving_mat':
 				self._factory.loader.MatOnTable()
@@ -127,7 +125,7 @@ class FSM_Actions ():
 				self._CanFull(True)	# sent to player holding can
 			elif action == 'removing_pulp':
 				self._factory.loader.PulpInTank(-1)
-			elif action == 'filling_mat':
+			elif 'filling_mat' in action:
 				if not '*' in action:	#don't let the second player execute the action again
 					self._factory.loader.FillMat()
 				if self._selected == 'canful':	#the one holding the can should...
@@ -138,6 +136,7 @@ class FSM_Actions ():
 			elif action == 'mat_as_tool':
 				matObj = self._factory.loader.components['mat']
 				self._factory.AddMatAsTool('matP', matObj)
+				
 			######## PRESS ACTIONS ###############
 			elif 'loading_press' in action:
 				LR = action[-1:]
@@ -157,6 +156,9 @@ class FSM_Actions ():
 			elif 'finishing_press' in action:	# called from the pump
 				LR = action[-1:]
 				viz.starttimer(ord(LR)+503, 1, 0)	#timer for finishing press
+			elif 'pumping_oil_press' in action:	# called from the oil pump
+				LR = action[-1:]
+				viz.starttimer(ord(LR)+505, 1, 0)	#timer for emptying the oil tanks
 			elif 'resetting_press' in action:	# called from the pump
 				LR = action[-1:]
 				viz.starttimer(ord(LR)+504, 1, 0)	#timer for releasing press
@@ -173,6 +175,11 @@ class FSM_Actions ():
 				LR = action[-1:]
 				press = 'press'+ LR
 				exec('self._factory.'+press+'.RestoreMats()')
+			elif 'emptying_oil' in action:
+				LR = action[-1:]
+				press = 'press'+ LR
+				exec('self._factory.'+press+'.PumpOil()')
+				
 			######## PUMP ACTIONS ###############
 			elif 'starting_pump' in action:
 				LR = action[-1:]
@@ -225,6 +232,79 @@ class FSM_Actions ():
 					viz.starttimer(ord(LR)+timers[timerTag][0], timers[timerTag][1], 0)
 				else:
 					viz.killtimer(ord(LR)+timers[timerTag][0])
+					
+			######## OIL PUMP ACTIONS ###############
+			elif action == 'start_pumping':
+				self._factory.oilPump.ChangeGuide(1)
+			elif action == 'stop_pumping':
+				self._factory.oilPump.ChangeGuide(-1)
+			elif action == 'filling_lavals':
+				self._factory.oilPump.OilPourInLavals(1)
+			elif action == 'emptying_tanks':
+				self._factory.oilPump.OilPourInLavals(0)
+			elif 'timerO' in action:
+				timerTag = action.partition('_')[2]
+				timerCode = action.partition('_')[0][-1:]	#1=set timer, 0=kill timer
+				timers = {'tanks':(701,5), 'lavals':(702,10)}
+				if int(timerCode) == 1:
+					viz.starttimer(timers[timerTag][0], timers[timerTag][1], 0)
+				else:
+					viz.killtimer(timers[timerTag][0])
+
+			######## LAVAL ACTIONS ###############
+			elif action == 'detaching_laval_belt':
+				self._factory.lavalR.DetachBelt()
+			elif 'attaching_belt' in action:	#has * at the end
+				if not '*' in action:	#execute the action only the first time
+					print "ATTACHING BELTTTTTTTTTTT by", self._name.getMessage()
+					self._factory.lavalR.AttachBelt()
+				if self._selected == 'belt':#the one holding the belt should...	
+					self.DropObject(False)	#drop it without putting in back in place
+			elif 'starting_laval' in action:
+				LR = action[-1:]
+				laval = 'laval'+ LR
+				exec('self._factory.'+laval+'.ChangeGuide(1)')
+			elif 'stopping_laval' in action:
+				LR = action[-1:]
+				laval = 'laval'+ LR
+				exec('self._factory.'+laval+'.ChangeGuide(-1)')
+			elif 'starting_separation' in action:
+				LR = action[-1:]
+				laval = 'laval'+ LR
+				exec('self._factory.'+laval+'.StartSeparation(1)')
+			elif 'stopping_separation' in action:
+				LR = action[-1:]
+				laval = 'laval'+ LR
+				exec('self._factory.'+laval+'.StartSeparation(0)')
+			elif 'transferring_pitcher' in action:
+				if not '*' in action:	#don't let the second player execute the animation again
+					LR = action[-1:]
+					laval = 'laval'+ LR
+					viz.starttimer(400+ord(LR), 7, 0)	#timer while transferring the pitcher -> anim-finshed
+					exec('self._factory.'+laval+'.MovePitcher(8)')
+			elif 'timerL' in action:
+				LR = action[-1:]
+				action = action.replace(LR, '')	#delete the last character
+				timerTag = action.partition('_')[2]
+				timerCode = action.partition('_')[0][-1:]	#1=set timer, 0=kill timer
+				#e.g., (401,10) -> set timer id=477 (76+401) or id=484 (82+402) for 10 secs
+				#10, 30, 30 secs should be also set in the laval's ChangePressure function 
+				timers = {'start':(401,10), 'done':(402,10), 'critical':(403,30), 'max':(404,30)}
+				if int(timerCode) == 1:
+					viz.starttimer(ord(LR)+timers[timerTag][0], timers[timerTag][1], 0)
+				else:
+					viz.killtimer(ord(LR)+timers[timerTag][0])
+			
+			######## SCALE ACTIONS ###############
+			elif action == 'pitcher_on_scale':	# called from the lavals
+				viz.starttimer(801, 1, 0)
+			elif action == 'weighing_pitcher':
+				self._factory.scale.WeighPitcher()
+			elif action == 'finishing_production':
+				viz.starttimer(802, 1, 0)
+			elif action == 'finishing_game':
+				print "GAME FINISHED with 400lbs produced!"
+				
 			# ALERTS ON MACHINERY
 			elif 'error' in action:
 				mach = action.partition('_')[2]

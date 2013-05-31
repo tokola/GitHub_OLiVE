@@ -50,7 +50,7 @@ class Pump():
 		guide = self.components['guide']
 		pos = guide.getPosition()
 		newPos = [pos[0], pos[1], pos[2]+100*dir]
-		self.faClass.belts['pump'+self.LR].MoveBelt(dir)
+		self.faClass.belts['pump'+self.LR].MoveBelt(dir, .135)
 		guide.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))
 	
 	def TurnValve (self, dir):
@@ -143,19 +143,16 @@ class Mill ():
 	"""This is the Mill class"""
 	def __init__(self, factory, pos, eul, LR):	#LR='L' or 'R'
 		self.object = factory.add('models/mill.osgb')
-		self.object.setScale(.32,.32,.32)
+#		self.object.setScale(.32,.32,.32)
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
 		dirs = {'L': 1, 'R': -1}	#direction of rotation according to mill
 		self.direction = dirs[LR]
-		#self.wheels = self.object.getChild('wheels')
-		#self.wheels.setCenter(0,3.954,0)
-		#self.object.getChild('wheels').remove()
+		self.wheels = self.object.insertGroupBelow('wheels')
+		self.wL = self.wheels.insertGroupBelow('WheelL')
+		self.wR = self.wheels.insertGroupBelow('WheelR')
 		#get the nodes used for animation
 		self.rotationAxis = self.object.getChild('rotation_axis')
-		self.wheels=self.object.add('models/mill_wheels.ive', pos=[0,3.964,0])
-		self.wL = self.wheels.getChild('WheelL')
-		self.wR = self.wheels.getChild('WheelR')
 		self.tankPulp = self.object.getChild('pulp')
 		self.pourPulp = self.object.getChild('pourPulp')
 		self.pourPulp.alpha(0)
@@ -165,33 +162,31 @@ class Mill ():
 		self.components = {}
 		self.componentPos = {}
 		# Add the paste
-#		self.object.getChild('mixedPulp').remove()
-#		self.mixedPulp = self.object.add('models/objects/paste_mixed.osgb', pos=[0, 0, 0])
 		self.mixedPulp = self.object.getChild('mixedPulp')
-		self.mixedPulp.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
-		self.mixedPulp.disable(viz.BLEND)
-		self.mixedPulp.drawOrder(-10, node='olives')	#make sure olives are drawn first
+#		self.mixedPulp.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
+#		self.mixedPulp.disable(viz.BLEND)
+#		self.mixedPulp.drawOrder(-10, node='olives')	#make sure olives are drawn first
 		self.mixedPulp.getChild('olives').setAnimationSpeed(.75)
-#		self.mixedPulp.alpha(0)
-#		self.mixedPulp.visible(0)
-		self.mixedPulp.setPosition(0,-1,0)
+		self.mixedPulp.setPosition(0,-.35,0)
 		self.mixedPulp.setScale(.85,1,.85)
-		justPaste = self.mixedPulp.getChild('paste')
+		justPaste = self.mixedPulp.insertGroupBelow('paste')
 		justPaste.alpha(0)
 		justPaste.visible(0)
 		self.components['paste'] = justPaste
 		self.componentPos[justPaste] = self.object.getPosition()
 		# Add the hatch
 		hatch = self.object.getChild('hatch')
-		hatch.center(.916, 2.681, -2.885)
+		hatch.center(.28, .879, -.907)
 		self.components['hatch'] = hatch
 		millPos = self.object.getPosition()
-		self.componentPos[hatch] = [millPos[0]+.916/3, millPos[1]+2.681/3, millPos[2]-2.885/3]
+		self.componentPos[hatch] = [millPos[0]+.28, millPos[1]+.879, millPos[2]-.907]
 		# Add the tank
 		tank = self.object.getChild('tank')
-		tank.center(1.147, .779, -3.165)
+		tank.center(.373, .252, -1.03)
 		self.components['tank'] = tank
-		self.componentPos[tank] = [millPos[0]+1.147/3, millPos[1]+.779/3, millPos[2]-3.165/3]
+#		self.componentPos[tank] = [millPos[0]+.373, millPos[1]+.252, millPos[2]-1.03]
+		self.componentPos[tank] = self.object.getChild('tank-GEODE').getPosition(viz.ABS_GLOBAL)
+#		print self.object.getChild('tank-GEODE').getPosition(viz.ABS_GLOBAL)
 		# Add the sacks
 		self.sackItem = viz.add('models/objects/sackR.osgb')
 		#The alpha is being applied as part of the material, but both sacks use the same material. 
@@ -244,17 +239,21 @@ class Mill ():
 	
 	def OlivesToPaste (self):
 		justPaste = self.components['paste']
+		self.mixedPulp.setTransparentDrawOrder(node='paste')
 		justPaste.addAction(vizact.method.visible(1))
 		justPaste.addAction(vizact.fadeTo(1, begin=0, time=30, interpolate=vizact.easeInCubic))
 			
 	def WastePaste (self):
-		self.mixedPulp.drawOrder(0, node='olives')
+#		self.mixedPulp.drawOrder(0, node='olives')
 		self.mixedPulp.addAction(vizact.fadeTo(0, time=1))
-		self.mixedPulp.addAction(vizact.method.drawOrder(-10))
+		self.mixedPulp.addAction(vizact.method.setScale(.85,1,.85))
+		self.mixedPulp.addAction(vizact.method.setPosition(0,-.35,0))
+		self.mixedPulp.addAction(vizact.method.visible(1))
+		self.mixedPulp.addAction(vizact.method.alpha(1, node='olives'))
 		
 	def PasteInTank (self):
 		hatch = self.components['hatch']
-		hatch.addAction(vizact.moveTo([.97-.917, 3.102-2.681, -3.095+2.885], time=1, interpolate=vizact.easeInOut))
+		hatch.addAction(vizact.moveTo([.3-.275, .976-.879, -0.956+.907], time=1, interpolate=vizact.easeInOut))
 		hatch.addAction(vizact.waittime(1))
 		openSignal = vizact.signal()
 		hatch.addAction(openSignal.trigger)
@@ -265,22 +264,60 @@ class Mill ():
 		self.pourPulp.addAction(vizact.fadeTo(0, time=.5))
 		self.tankPulp.addAction(openSignal.wait)
 		self.tankPulp.addAction(vizact.waittime(.5))
-		self.tankPulp.addAction(vizact.moveTo([0,1,0], time=5, interpolate=vizact.easeOut))
+		self.tankPulp.addAction(vizact.moveTo([0,.4,0], time=5, interpolate=vizact.easeOut))
 		self.mixedPulp.addAction(openSignal.wait)
 #		self.mixedPulp.addAction(vizact.fadeTo(0, time=5))
 		move = vizact.moveTo([0, -1, 0], time=5)
 		resize = vizact.sizeTo([.85,1,.85], time=5, interpolate=vizact.easeOut)
 		self.mixedPulp.addAction(vizact.parallel(move, resize))
 		
-	def MovingTank (self):
-		pass
-	
+	def MoveTank (self):
+		tank = self.components['tank']
+		self.cart = viz.add('models/objects/cart.osgb', pos = [-5.2166,0,4.448])
+		cTank = self.cart.insertGroupBelow('tank')
+		cTank.visible(0)
+		cTank.alpha(0, node='pourPulp')
+		tank.addAction(vizact.moveTo([-0.25,0,-.5], time=1, interpolate=vizact.easeInOutSine))
+		tank.addAction(vizact.moveTo([-0.25,.5,-.5], time=.5, interpolate=vizact.easeInOutSine))
+		tank.addAction(vizact.spinTo(euler=[60,0,0], time=.5))
+		tank.addAction(vizact.moveTo([0,.5,-1.5], time=1, interpolate=vizact.easeInOutSine))
+		tank.addAction(vizact.moveTo([0,.2,-1.5], time=.5, interpolate=vizact.easeInSine))
+		waitLoad = vizact.signal()
+		tank.addAction(waitLoad.trigger)
+		tank.addAction(vizact.method.visible(0))
+		cTank.addAction(waitLoad.wait)
+		cTank.addAction(vizact.method.visible(1))
+		self.cart.addAction(waitLoad.wait)
+		self.cart.addAction(vizact.spinTo(euler=[-20,0,0], time=.5))
+		moveCart = vizact.moveTo([-14.65, 0, .75], time=3)
+		rotateCart = vizact.spinTo(euler=[0,0,0], time=3)
+		self.cart.addAction(vizact.parallel(moveCart, rotateCart))
+		waitMove = vizact.signal()
+		self.cart.addAction(waitMove.trigger)
+		cTank.addAction(waitMove.wait)
+		cTank.addAction(vizact.moveTo([0,1,-0.1], time=1))
+		cTank.addAction(vizact.spinTo(euler=[0,-90,0], time=1))
+		cTank.addAction(vizact.fadeTo(1, time=.5, node='pourPulp'))
+		cTank.addAction(vizact.fadeTo(0, time=3, node='pulp', interpolate=vizact.easeInExp))
+		cTank.addAction(vizact.fadeTo(0, time=.5, node='pourPulp'))
+		
 	def ResetMill (self):
 		hatch = self.components['hatch']
 		hatch.addAction(vizact.moveTo([0,0,0], time=1, interpolate=vizact.easeInOut))
 		self.tankPulp.setPosition(0,0,0)
 		self.components['paste'].alpha(0)
 		self.components['paste'].visible(0)
+		tank = self.components['tank']
+		tank.setPosition(0,0,0)
+		tank.setEuler(0,0,0)
+		tank.alpha(0)
+		tank.addAction(vizact.method.visible(1))
+		tank.addAction(vizact.fadeTo(1, begin=0, time=.5))
+		self.tankPulp.setPosition(0,0,0)
+		self.cart.getChild('pourPulp').remove()
+		self.cart.getChild('pulp').remove()
+		self.cart.addAction(vizact.fadeTo(0, time=.5))
+		self.cart.addAction(vizact.method.remove())
 		
 	def Start (self):
 		self.rotationAxis.addAction(vizact.spin(0,1,0,35*self.direction,viz.FOREVER))
@@ -328,7 +365,7 @@ class Engine ():
 class Press ():
 	"""This is the Press class"""
 	def __init__(self, factory, pos, eul):
-		self.object = factory.add('models/press2.osgb')
+		self.object = factory.add('models/press.osgb')
 		#self.object.setScale(.045,.045,.045)
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
@@ -337,6 +374,7 @@ class Press ():
 		self.oilGathered.alpha(0)
 		self.mats = self.object.getChild('elaiopana')
 		self.mats.visible(0)
+#		self.mats.hint(viz.COPY_SHARED_MATERIAL_HINT)
 		self.mats.alpha(0)
 #		self.mats.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
 #		self.mats.disable(viz.BLEND)
@@ -351,7 +389,7 @@ class Press ():
 		self.mat.visible(0)
 		self.mat.alpha(0)
 		self.oilSurface = self.object.getChild('oilSurface')
-		self.oilSurface.setPosition(0,-.165,0)
+		self.oilSurface.setPosition(0,-.22,0)
 		self.piston = self.object.getChild('pressPiston')
 		#for storing the loaded mats (objects)
 		self.loadedMats = []
@@ -430,6 +468,9 @@ class Press ():
 	
 	def Releasing (self, dur):
 		self.piston.addAction(vizact.moveTo([0,0,0], time=dur, interpolate=vizact.easeOut))
+	
+	def PumpOil (self):
+		self.oilSurface.addAction(vizact.moveTo([0,-.22,0], time=30))
 		
 	#Get the engine working
 	def Start (self):
@@ -498,8 +539,8 @@ class Loader ():
 		self.PulpLevel += inOut
 		amount = self.PulpLevel * .05
 		pulp = self.components['pulp']
-		move = vizact.moveTo([0,amount,0], time=1)
-		resize = vizact.sizeTo([1+amount/4,1,1+amount/2], time=1)
+		move = vizact.moveTo([0,amount,0], time=3)
+		resize = vizact.sizeTo([1+amount/4,1,1+amount/2], time=3)
 		pulp.addAction(vizact.parallel(move, resize))
 	
 	def PickMat(self):
@@ -518,57 +559,135 @@ class Loader ():
 		
 class Laval ():
 	"""This is the Laval class"""
-	def __init__(self, factory, pos, eul):
-		self.object = factory.add('models/laval.ive')
+	def __init__(self, factory, pos, eul, LR, faClass):
+		self.object = factory.add('models/laval.osgb')
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
+		self.LR = LR
+		self.faClass = faClass	#the factory class used to get the belts
 		base = factory.add('models/objects/concrete base.ive')
-		base.setPosition(pos[0]+0.01, pos[1], pos[2]-0.15)
-		base.scale(.085,.1,.12)
+		base.setPosition(pos[0]-.02, pos[1], pos[2]+.05)
+		base.scale(.12,.1,.25)
 		self.belt = self.object.getChild('belt_laval')
 		self.power_wheel = self.object.getChild('powerW')
 		self.power_wheel.center(-.393, .643, .048)
+#		self.gauge = self.object.getChild('gauge')
+		#insert group right below gauge transform since the OFFSET and GEODE subobjects are not pivoted correctly.
+		self.gauge = self.object.insertGroupBelow('gauge')
+#		self.gauge.center(.069, .762, -.238)
+		self.oil = self.object.getChild('oil')
+		self.oil.alpha(0)
+		self.water = self.object.getChild('water')
+		self.water.alpha(0)
 		self.getComponents()
 
 	def getComponents (self):
 		self.components = {}
 		self.componentPos = {}
+		guide = self.object.getChild('handle')
+		guide.center(-.47, .834, 0.197)
+		lavalPos = self.object.getPosition()
+		self.components['guide'+self.LR] = guide
+		self.componentPos[guide] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
+		pitcher = self.object.getChild('pitcher')
+		self.components['pitcher'+self.LR] = pitcher
+		self.componentPos[pitcher] = [lavalPos[0]+.215, lavalPos[1]+.689, lavalPos[2]-.505]
 		self.wheel = self.object.getChild('wheel')
 		self.wheel.center(-.352, 1.251, 2.388)
-		self.components['wheel'] = self.wheel
-		lavalPos = self.object.getPosition()
-		self.componentPos[self.wheel] = [lavalPos[0]+.56, lavalPos[1]+.9, lavalPos[2]-1.174]
 		self.crazy_wheel = self.object.getChild('crazyW')
 		self.crazy_wheel.center(-.393, .643, .048)
-		self.components['crazyW'] = self.crazy_wheel
-		self.componentPos[self.crazy_wheel] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
-		handle = self.object.getChild('handle')
-		handle.center(-.47, .834, 0.197)
-		self.components['handle'] = handle
-		self.componentPos[handle] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
+		if self.LR == 'R':
+			self.components['wheel'] = self.wheel
+			self.componentPos[self.wheel] = [lavalPos[0]+.35, lavalPos[1]+1.25, lavalPos[2]-2.4]
+			self.components['crazyW'] = self.crazy_wheel
+			self.componentPos[self.crazy_wheel] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
+		else:
+			self.faClass.belts['lavalL'] = Belt(self.belt)
+	
+	def DetachBelt (self):
+		self.belt.visible(0)
 		
-	#Get the engine working
-	def Start (self):
+	def AttachBelt (self):
+		self.belt.addAction(vizact.fadeTo(1, begin=0, time=1))
+		self.belt.visible(1)
+		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
+		
+	def StartSeparation (self, start):
+		self.oil.addAction(vizact.fadeTo(start, time=.5))
+		self.water.addAction(vizact.fadeTo(start, 1))
+		if start == 1:
+			pitcher = self.components['pitcher'+self.LR]
+			oilSurf = pitcher.getChild('oilSurface')
+			oilSurf.addAction(vizact.moveTo([0,0,1.45], time=10))
+	
+	def MovePitcher (self, t):
+		pitcher = self.components['pitcher'+self.LR]
+		posX = self.object.getPosition()[0]
+		off = 0		#this is the offset for the left DeLaval's pitcher
+		if self.LR == 'R':
+			off = .5
+		pitcher.addAction(vizact.moveTo([posX,0,-4], time=2*t/10, interpolate=vizact.easeInOut, mode=viz.ABS_GLOBAL))
+		pitcher.addAction(vizact.moveTo([-2.5,0,-5], time=5*t/10, interpolate=vizact.easeInOut, mode=viz.ABS_GLOBAL))
+		pitcher.addAction(vizact.moveTo([-2.5-off,0,-6.8+off], time=3*t/10, interpolate=vizact.easeInOut, mode=viz.ABS_GLOBAL))
+		pitcher.addAction(vizact.moveTo([-2.5-off,-0.08,-6.8+off], time=.2, mode=viz.ABS_GLOBAL))
+		pitcher.addAction(vizact.moveTo([-2.5-off,-0.1, -6.8+off], time=2, interpolate=vizact.easeInOutCircular, mode=viz.ABS_GLOBAL))
+		
+	def ChangePressure(self, pressure):
+		self.gauge.endAction()
+		#dict of tuples (degrees of rotation, anim duration) for every pressure value
+		presToAngle = {4500: (270,30), 3000: (180,10), 1500: (90,10), 0:(0,5)}
+		angle = presToAngle[pressure][0]
+		duration = presToAngle[pressure][1]
+		ease = vizact.easeInOutCubic
+		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
+		if angle == 0:
+			incPress = vizact.spinTo(euler=[180, 0, 0], time=2, interpolate=vizact.easeIn)
+			self.gauge.addAction(incPress)
+			ease = vizact.easeOut
+		incPress = vizact.spinTo(euler=[angle, 0, 0], time=duration, interpolate=ease)
+		self.gauge.addAction(incPress)
+		
+	def ChangeGuide (self, dir):	#dir=1 -> move right, -1 -> move left
+		guide = self.components['guide'+self.LR]
+		pos = guide.getPosition()
+		newPos = [pos[0]+.25*dir, pos[1], pos[2]]
+		self.faClass.belts['laval'+self.LR].MoveBelt(-dir, .09)
+		guide.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))
+		if dir > 0:
+			guide.addAction(vizact.call(self.StopCrazy))
+			guide.addAction(vizact.call(self.SetMotion))
+		else:
+			guide.addAction(vizact.call(self.StartCrazy))
+			guide.addAction(vizact.call(self.EndMotion))
+			
+	def StartCrazy (self):
 		self.crazy_wheel.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		
+	def StopCrazy (self):
+		self.crazy_wheel.endAction()
+		
+	def SetMotion (self):
+		self.power_wheel.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		
+	def EndMotion (self):
+		self.power_wheel.endAction()
+		
+	def Start (self):
+		self.StartCrazy()
 		self.wheel.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
 		
 	def Stop (self):
-		self.crazy_wheel.endAction()
+		self.StopCrazy()
+		self.EndMotion()
 		self.wheel.endAction()
-	
-	def detachBelt (self):
-		self.belt.visible(0)
 		
-	def attachBelt (self):
-		self.belt.addAction(vizact.fadeTo(1, begin=0, time=1))
-		self.belt.visible(1)
-
 class OilPump ():
 	"""This is the Oil Pump class"""
-	def __init__(self, factory, pos, eul):
-		self.object = factory.add('models/oil_pump.ive')
+	def __init__(self, factory, pos, eul, faClass):
+		self.object = factory.add('models/oil_pump.osgb')
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
+		self.faClass = faClass
 		base = factory.add('models/objects/concrete base.ive')
 		base.setPosition(pos[0]+0.12, pos[1]-.3, pos[2]+0.02)
 		base.scale(.07,.1,.08)
@@ -577,12 +696,61 @@ class OilPump ():
 		self.rod = self.object.getChild('rod')
 		self.rod.center(-.428, .642, -.104)
 		link = viz.link(self.cyl, self.rod)
-	
-	def Start(self):
-		pass
+		self.wheelP = self.object.getChild('wheelP')
+		self.wheelP.center(.149, .638, -.026)
+		self.wheelC = self.object.getChild('wheelC')
+		self.wheelC.center(.244, .638, -.026)
+		self.oilDrop = self.object.getChild('oilDrop')
+		self.oilDrop.alpha(0)
+		self.faClass.belts['oilPump'] = Belt(self.object.getChild('belt'))
+		self.getComponents()
 		
-	def Stop(self):
-		pass
+	def getComponents (self):
+		self.components = {}
+		self.componentPos = {}
+		handle = self.object.getChild('handle')
+		self.components['handle'] = handle
+		self.componentPos[handle] = self.object.getPosition()
+	
+	def ChangeGuide (self, dir):	#dir=1 -> move right, -1 -> move left
+		dir = -dir
+		handle = self.components['handle']
+		pos = handle.getPosition()
+		newPos = [pos[0]+.1*dir, pos[1], pos[2]]
+		self.faClass.belts['oilPump'].MoveBelt(-dir, .1)
+		handle.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))
+		if dir < 0:
+			handle.addAction(vizact.call(self.StopCrazy))
+			handle.addAction(vizact.call(self.SetMotion))
+		else:
+			handle.addAction(vizact.call(self.StartCrazy))
+			handle.addAction(vizact.call(self.EndMotion))
+	
+	def OilPourInLavals (self, flag):
+		self.oilDrop.addAction(vizact.fadeTo(flag, time=.5))
+		if not flag: self.oilDrop.visible(0)
+		
+	def StartCrazy (self):
+		self.wheelC.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		
+	def StopCrazy (self):
+		self.wheelC.endAction()
+		
+	def SetMotion (self):
+		self.wheelP.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		self.cyl.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		
+	def EndMotion (self):
+		self.wheelP.endAction()
+		self.cyl.endAction()
+	
+	def Start (self):
+		self.StartCrazy()
+		
+	def Stop (self):
+		self.StopCrazy()
+		self.EndMotion()
+		
 		
 class Boiler ():
 	"""This is the Boiler class"""
@@ -667,28 +835,43 @@ class Boiler ():
 			self.fire.addAction(vizact.method.visible(0))
 
 
-#class Tanks ():
-#	"""This is the Laval class"""
-#	def __init__(self, factory, pos, eul):
-#		self.object = factory.add('models/tanks.ive')
-#		self.object.setPosition(pos)
-#		self.object.setEuler(eul)
+class Scale ():
+	"""This is the Laval class"""
+	def __init__(self, factory, pos, eul):
+		self.object = factory.add('models/scale.ive')
+		self.object.setPosition(pos)
+		self.object.setEuler(eul)
+		self.base = self.object.getChild('base')
+		self.needle = self.object.insertGroupBelow('gauge')
+	
+	def WeighPitcher (self):
+		self.base.addAction(vizact.move(0,-0.015,0, time=2))
+		self.needle.addAction(vizact.spin(0,120,0, speed=60, dur=2))
+		
+	def Start (self):
+		pass
+		
+	def Stop (self):
+		pass
 
 		
 class Belt ():
 	"""This is the Belt class"""
 	def __init__(self, obj):
 		self.belt = obj
-		self.matrix1 = vizmat.Transform()
-		self.matrix2 = vizmat.Transform()
-		self.timer = vizact.ontimer(.01, self.TurnBelt)
-		self.timer.setEnabled(viz.OFF)
+		self.belt.setAnimationSpeed(0)
+#		self.matrix1 = vizmat.Transform()
+#		self.matrix2 = vizmat.Transform()
+#		self.timer = vizact.ontimer(.01, self.TurnBelt)
+#		self.timer.setEnabled(viz.OFF)
 	
 	def Start(self):
-		self.timer.setEnabled(viz.ON)		
+		self.belt.setAnimationSpeed(1)
+#		self.timer.setEnabled(viz.ON)		
 	
 	def Stop(self):
-		self.timer.setEnabled(viz.OFF)
+		self.belt.setAnimationSpeed(0)
+#		self.timer.setEnabled(viz.OFF)
 		
 	def TurnBelt(self):
 		self.matrix1.postTrans(0,.04,0)
@@ -696,7 +879,7 @@ class Belt ():
 		self.belt.texmat(self.matrix1,'belt1',0)
 		self.belt.texmat(self.matrix2,'belt2',0)
 		
-	def MoveBelt (self, dir):
+	def MoveBelt (self, dir, dist):
 		pos = self.belt.getPosition()
-		newPos = [pos[0]-.135*dir, pos[1], pos[2]]
+		newPos = [pos[0]-dist*dir, pos[1], pos[2]]
 		self.belt.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))

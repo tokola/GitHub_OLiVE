@@ -1,9 +1,13 @@
-﻿import viz
+﻿import sys
+#avoid generating the .pyc files
+sys.dont_write_bytecode = True
+
+import viz
 import vizact
 import vizjoy
 from string import upper, lower
+import pickle
 import Factory
-#import Machinery
 import Interaction
 import Window
 import Avatar
@@ -20,8 +24,9 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-MACHINERY = ('boiler', 'engine', 'tanks', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader')
-#MACHINERY = ('boiler', 'engine', 'tanks', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL')
+#MACHINERY = ('lavalR', 'lavalL', 'pressR', 'pressL', 'oilPump', 'scale')
+#MACHINERY = ('boiler', 'engine', 'lavalR', 'lavalL', 'millR', 'pressR', 'pumpR', 'loader', 'oilPump')
+MACHINERY = ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL')
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
 
@@ -29,7 +34,7 @@ DEVICE = 'XBOX'
 
 gPlayers = {}
 
-gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [16,EYEHEIGHT,5]},
+gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-5,EYEHEIGHT,-5]},
                2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
                3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
 
@@ -121,18 +126,56 @@ vizact.onkeydown(viz.KEY_BACKSPACE, startTimer)
 ## PARSE LOGFILE FROM FSM ##
 ############################
 
-def parseLogFile (parser):
-	log = FSM.log
-	if parser == 'time':
-		output = []
+def parseLogFile ():
+	output = []
+	for m in FSM.keys():
+		log = FSM[m].log		
 		for p,data in log.iteritems():
-			for e in data:
-				output.append((e[2], p, e[0], e[1]))
-		output.sort()
-	# Output log in readable format
-	for i in output:
-		print "Time Stamp: %s | %s performed %s and caused actions: %s" %(i[0], i[1], i[2], str(i[3]))
-		
+			for e in data:	#e[0]-> input, e[1]-> actions, e[2] -> time stamp
+				output.append((e[2], p, getPName(p), e[0], m, e[1]))
+	# sort data according to time stamp			
+	output.sort()
+	saveLogFile(output)
+	
+def saveLogFile(content):
+	file = open('logfile', 'w')
+	pickle.dump(content, file)
+	file.close()
+
+def loadLogFile():
+	file = open('logfile', 'r')
+	log = pickle.load(file)
+	file.close()
+	return log
+	
+def printLogFile(parser):
+	import time
+	data = loadLogFile()
+	# Output log in readable format: i[0]->time, i[1]->player, i[2]->name, i[3]->machine, i[4]->input, i[5]->actions
+	if parser == 'time':
+		data.sort(key=lambda tup: tup[0])
+	elif parser == 'machine':
+		data.sort(key=lambda tup: tup[4])
+	elif parser == 'player':
+		data.sort(key=lambda tup: tup[1])
+	for i in data:
+		if parser == 'time':
+			print "Time Stamp: %s | P%s (%s) performed %s on machine %s and caused actions: %s" %(i[0], i[1], i[2], i[3], i[4], str(i[5]))
+		elif parser == 'machine':
+			print "Machine: %s | At %s player P%s (%s) performed %s and caused actions: %s" %(i[4], i[0], i[1],  i[2], i[3], str(i[5]))
+		elif parser == 'player':
+			print "Player%s: %s | At %s performed %s on machine %s and caused actions: %s" %(i[1],  i[2], i[0], i[3], i[4], str(i[5]))
+	
+def getPName (p):
+	return gPlayers[p]['player']._name.getMessage()
+
+def onExit():
+#	import vizinput
+#	vizinput.message('goodbye')
+	parseLogFile()
+
+viz.callback(viz.EXIT_EVENT, onExit) 
+	
 ##############################
 ## STATES for STATE MACHINE ##
 ##############################
@@ -316,9 +359,9 @@ def timerExpire(id):
 	elif id in [576, 582]:	# timer for press releasing animation expiration
 		(actions, message) = FSM['press'+chr(id-500)].evaluate_state('anim-finished')
 	elif id in range(577, 588): 
-		#577: time to fillup, 578: pump 1500psi, 579: pump 4000psi, 580: bypass valve closed
-		animsL = {577: 'fillup', 578: 'start', 579: 'finish', 580: 'reset'}
-		animsR = {583: 'fillup', 584: 'start', 585: 'finish', 586: 'reset'}
+		#577: time to fillup, 578: pump 1500psi, 579: pump 4000psi, 580: bypass valve closed, 581: oilPump started
+		animsL = {577: 'fillup', 578: 'start', 579: 'finish', 580: 'reset', 581: 'oilPumping'}
+		animsR = {583: 'fillup', 584: 'start', 585: 'finish', 586: 'reset', 587: 'oilPumping'}
 		id, code = getTimerIDCode(id, animsL, animsR)
 		(actions, message) = FSM['press'+chr(id)].evaluate_state('press-'+code)
 
@@ -330,6 +373,25 @@ def timerExpire(id):
 		animsR = {183: 'good', 184: 'safe', 185: 'done', 186: 'high', 187: 'max'}
 		id, code = getTimerIDCode(id, animsL, animsR)
 		(actions, message) = FSM['pump'+chr(id)].evaluate_state('pressure-'+code)
+	
+	# TIMERS FOR LAVALS [lavalL: 477-481, lavalR: 483-487]
+	elif id in [476, 482]:	# timer for laval damage expiration
+		(actions, message) = FSM['laval'+chr(id-400)].evaluate_state('anim-finished')
+	elif id in range(477, 488):	# timers for laval animations
+		animsL = {477: 'start', 478: 'done', 479: 'critical', 480: 'max'}
+		animsR = {483: 'start', 484: 'done', 485: 'critical', 486: 'max'}
+		id, code = getTimerIDCode(id, animsL, animsR)
+		(actions, message) = FSM['laval'+chr(id)].evaluate_state('separation-'+code)
+		
+	# TIMERS FOR OILP PUMP
+	elif id in [701, 702]:	# timer for oil pump expiration
+		anims = {701: 'tanks', 702: 'lavals'}
+		(actions, message) = FSM['oilPump'].evaluate_state(anims[id]+'-filled')
+		
+	# TIMERS FOR SCALE
+	elif id in [801, 802]:	# timer for scale expiration
+		anims = {801: 'pitcher', 802: 'finished'}
+		(actions, message) = FSM['scale'].evaluate_state('weigh-'+anims[id])
 		
 	#tell player 1 to broadcast messages and actions
 	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
@@ -346,23 +408,9 @@ def getTimerIDCode (id, anL, anR):
 	return id, code
 	
 #----------------------------------------------------------------
-def applyNormalToMillR():
-#	kazani=olivePress.machines['millR'].object.getChild('kazani')
-	kazani=viz.add('models/tank.osgb')
-	normal=viz.add('models/images/PRITSINIA_NORMAL_2.tga')
-	diffuse=viz.add('models/images/kazani_unfolded.tga')
-	kazani.bumpmap(normal,'',0)
-	kazani.texture(diffuse,'',1)
-	kazani.color(1,1,1)
-	
-def applyNormalToPumpL():
-	global tank
-	tank=viz.add('models/pump_tank.ive')
-	tank.setPosition(-5,2,0)
-	tank.setScale(.1,.1,.1)
-	#tank=olivePress.machines['pumpL'].object.getChild('water tank')
-	normal=viz.add('models/images/testNormal.jpg')
-	diffuse=viz.add('models/images/Roiled Concrete.tga')
-	tank.bumpmap(normal,'',0)
-	tank.texture(diffuse,'',1)
-	tank.color(1,1,1)
+def sendEventToMachine (mach, action):
+	(mActions, mMessage) = FSM[mach].evaluate_multi_input(action, gPlayers[1]['player'], True)
+	gPlayers[1]['player'].BroadcastActionsMessages(mActions, mMessage)
+
+def changeFSMState (mach, newState):
+	FSM[mach].set_start(newState)
