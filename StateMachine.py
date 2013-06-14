@@ -31,7 +31,9 @@ class StateMachine ():
 
 		if not self.endStates:
 			raise AttributeError("At least one state must be an end_state")
-			
+		
+		prevState = self.currentState
+		
 		# This is the callback of the function passed when loading the state machine;
 		# cargo is used to carry a tuple with actions and messages (<actionList>, <messageList>);
 		# synch is a boolean for defining if the callback function (MachineState) 

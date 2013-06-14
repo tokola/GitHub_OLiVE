@@ -2,17 +2,25 @@
 import vizact
 from collections import OrderedDict
 from operator import itemgetter
+from weakref import WeakValueDictionary
 import sys
 import vizmat
 import vizinfo
 import viztask
+import vizdlg
+import vizproximity
 import textwrap
+import fnmatch
 import FSM_Actions
 
 GRABDIST = 2	# The threashold for grabbing/interacting with items
 
 class PlayerView(FSM_Actions.FSM_Actions):
 	"""This is the class for making a new view"""
+	
+	players = WeakValueDictionary()	#holds all player instances (used by FSM_Actions)
+	sounds = {'score1':viz.addAudio('sounds/score1.wav'), 'score0':viz.addAudio('sounds/score0.wav')}
+	
 	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, name=None, sm=None, fmap=None):
 		if view == None:
 			view = viz.addView()
@@ -29,26 +37,30 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._name = name
 		#check if this is a player window
 		if player in [1,2,3]:
-#			self._view.collision(viz.ON)
-			self._view.stepSize(.35)
+			self.players[player] = self	#list of all player instances (used by FSM_Actions)
+			self._view.stepSize(0.1)
 			self._view.collisionBuffer(0.25)
 			self._view.getHeadLight().disable()
 			self._window.clearcolor(viz.SKYBLUE)
 			self.AddPanel()
 			#reset other variables
 			self._toolbox = OrderedDict()
-			self._selected = None
-			self._holding = None
-			self._picking = None
+			self._selected = None	#object name being currently held/selected
+			self._holding = None	#object being currently held/selected
+			self._picking = None	#object name being intersected by cursor
 			self._iMach = None		#machine interacting with (one of its components)
-			self._factory = fact
+			self._nearMachine = None#machine being near to (based on proximity)
+			self._updateAlerts = []	#a list of tuples (machine, error) for checking the alert update
+			self._factory = fact	#factory object
 			self.AddToToolbox('hand')
-			self._fsm = sm
-			self._mapWin = fmap
-			self._pressed = False
+			self._fsm = sm			#FSM with all machine states
+			self._mapWin = fmap		#the map (storing all alerts and messages)
+			self._pressed = False	#True is player presses a button
 			self._pickcolor = viz.GREEN
+			self._feedback = None	#feedback message as result of interaction (not in FSM)
 			#set an update function to take care of window resizing (priority=0)
 			self._updateFunc = vizact.onupdate(0, self.Update)
+			self.LoadToolTips()
 			#FSM_Actions.FSM_Actions.__init__(self)
 		else:	#this is the map view
 			self._window.clearcolor([.3,.3,.3])
@@ -60,6 +72,47 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self.AddMap()
 		
 	
+	#######################################
+	### RECEIVED FROM PROXIMITY SENSORS ###
+		
+	def ChangeStepSize(self, step):
+		self._view.stepSize(step)
+
+	def ApproachMachine(self, machine):
+#		print "Player", self._name.getMessage(), "approached", machine
+		self._nearMachine = machine
+		if self._mapWin._messages.has_key(machine):
+			mes = self._mapWin._messages[machine]
+			self.DisplayAlert(mes)
+			if not self._alertPanel.getPanelVisible():
+				self._alertPanel.setPanelVisible(1)
+		
+	def LeaveMachine(self, machine):
+#		print "Player", self._name.getMessage(), "left", machine
+		self._nearMachine = None
+		if self._mapWin._alerts.has_key(machine):
+			self._alertPanel.setIconTexture(self._alertIcons['a'])
+			self._alertPanel.setPanelVisible(0)
+	
+	def CheckForAlertNearMachine(self, *args):
+		#stores the machine and error code to check in the next simulation step (frame)
+		#this makes sure that the map messages are updated by the DisplayGlobalMessages function first...
+		if len(args) > 1:
+			self._updateAlerts.append(args)	#args =(machine, error)
+			return
+		#...before updating the messages and alert icons with the following code (executed by Update)
+		#the index of the alert from the _updateAlerts list is passed as an argument
+		ind = args[0]
+		machine, error = self._updateAlerts[ind][0], self._updateAlerts[ind][1]
+		if machine == self._nearMachine:
+			if error > 0:	#a new error appeared so update alert panel
+				mes = self._mapWin._messages[machine]
+				self.DisplayAlert(mes)
+			else:	#an error ceized so reset the icon of the alert panel
+				self._alertPanel.setIconTexture(self._alertIcons['a'])
+			#show or hide the alert panel
+			self._alertPanel.setPanelVisible(error)	
+		
 	###############################
 	### ONLY FOR THE MAP WINDOW ###
 	
@@ -70,31 +123,138 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		#self.flmap.setScale(1, 1, 1.1)
 		self.flmap.renderOnlyToWindows([self._window])
 		self.bg = viz.addTexQuad(parent=viz.ORTHO, scene=self._window)
-		#add the alert messages space
-		self._alert = vizinfo.add( 'This example demonstrates the use of the vizinfo module.' )
-		self._alert.icon(viz.add('textures/alert_icon.png'))
-		self._alert.scale([1.1,1.2])
-		self._alert.alignment(vizinfo.UPPER_LEFT)
-		self._alert.translate( [.03, .1] )
-		self._alertIcon = viz.add('textures/alert_icon.png')
-		self._infoIcon = viz.add('textures/info_icon.png')
+		self.CreateInfoPanels()
+		self.CreateScorePanel()
+		
+	def CreateInfoPanels (self):
+		#add the alert messages panel
+		self._alertPanel = vizinfo.InfoPanel('Factory Alerts', window=self._window, align=viz.ALIGN_LEFT_BOTTOM)
+		self._alertPanel.getPanel().fontSize(14)
+		self._alertPanel.getPanel().setCellPadding(5)
+		self._alertPanel.getPanel().setMargin(1)
+		self._alertIcons = {'a': viz.add('textures/alert_icon.png'), 'w': viz.add('textures/danger_icon.png')}
+		self._alertPanel.setIconTexture(self._alertIcons['a'])
+		self._alertThemes = {'a': viz.getTheme(), 'w': viz.getTheme()}
+		self._alertThemes['a'].borderColor = (.5,0.5,0,1)
+		self._alertThemes['w'].borderColor = (.5,0,0,1)
+		self._alertPanel.setPanelVisible(0)
+		#add the info messages panel
+		self._infoPanel = vizinfo.InfoPanel('Welcome to the Olive Oil Production Factory', window=self._window, align=viz.ALIGN_LEFT_TOP)
+		self._infoPanel.getPanel().fontSize(14)
+		self._infoPanel.getPanel().setCellPadding(5)
+		self._infoPanel.getPanel().setMargin(1)
+		self._infoPanel.setIconTexture(viz.add('textures/info_icon.png'))
+		self._infoTheme = viz.getTheme()
+		self._infoTheme.borderColor = (0,0,.5,1)
+		self._infoPanel.getPanel().setTheme(self._infoTheme)
+		self._infoTimer = vizact.ontimer2(10, 1, self.ShowInfoPanel, False)
 
+	def CreateScorePanel(self):
+		self._newScore = None	#holds the temp score after each update
+		self._scorePanel = vizdlg.GridPanel(window=self._window, skin=vizdlg.ModernSkin, 
+					spacing=-10, align=vizdlg.ALIGN_RIGHT_TOP, margin=0)
+		row1text = viz.addText('Points')
+		row1text.font("Segoe UI")
+		self._scoreIcon = viz.addTexQuad(size=25, texture=viz.add('textures/star_yellow_256.png'))
+		self._score= viz.addText('000')
+		self._score.font("Segoe UI")
+		self._score.alignment(viz.ALIGN_RIGHT_BASE)
+		self._scorePanel.addRow([self._scoreIcon, row1text, self._score])
+		row2text = viz.addText('Olive Oil (lbs)')
+		row2text.font("Segoe UI")
+		self._oilIcon = viz.addTexQuad(size=25, texture=viz.add('textures/oil_icon.png'))
+		self._oil= viz.addText('000')
+		self._oil.font("Segoe UI")
+		self._oil.alignment(viz.ALIGN_RIGHT_BASE)
+		self._scorePanel.addRow([self._oilIcon, row2text, self._oil])
+		self._scorePanel.setCellAlignment(vizdlg.ALIGN_RIGHT_TOP)
+		#place the score board at the top right corner of the window
+		viz.link(self._window.RightTop, self._scorePanel, offset=(-10,-45,0))
+		
+	def ShowTotalScore (self):
+		#add third row with the total score
+		row3text = viz.addText('Total')
+		row3text.font("Segoe UI")
+		row3icon = viz.addTexQuad(size=25)
+		self._total= viz.addText('000')
+		self._total.font("Segoe UI")
+		self._total.alignment(viz.ALIGN_RIGHT_BASE)
+		self._scorePanel.addRow([row3icon, row3text, self._total])
+		
+	def IncreaseOilTotal (self, dur):
+		score = int(self._score.getMessage())
+		oil = int(self._oil.getMessage())
+		total = int(self._total.getMessage())
+		oilCounter = vizact.mix(oil, oil+200, time=dur)
+		totalCounter = vizact.mix(total, total+score*200, time=dur)
+		self._total.addAction(vizact.call(self.CounterIncrease, self._total, totalCounter))
+		self._oil.addAction(vizact.call(self.CounterIncrease, self._oil, oilCounter))
+	
+	def CounterIncrease (self, counter, val):
+		counter.message(str(int(val)))
+		
+	def UpdateScore(self, points):
+		curScore = int(self._score.getMessage())
+		if self._newScore == None:	#this ensures correct update of the score
+			self._newScore = curScore + points
+		else:
+			self._newScore += points
+		self.sounds['score'+str(int(points>0))].play()
+		resize = vizact.sizeTo([1.5-(points<0),1.5-(points<0),0], time=.25)	#resizes to .5 if deducting points
+		color = [viz.RED, viz.GREEN][points>0]
+		fade = vizact.fadeTo(color, time=.25)
+		self._scoreIcon.addAction(vizact.parallel(resize, fade))
+		waitAnim = vizact.signal()
+		self._scoreIcon.addAction(waitAnim.trigger)
+		self._score.addAction(waitAnim.wait)
+		self._score.addAction(vizact.method.message(str(self._newScore)))
+		self._score.addAction(vizact.call(self.resetNewScore))
+		resize = vizact.sizeTo([1,1,0], time=.25)
+		fade = vizact.fadeTo(viz.YELLOW, time=.25)
+		self._scoreIcon.addAction(vizact.parallel(resize, fade))
+	
+	def resetNewScore (self):
+		self._newScore = None
+		
+	def ShowInfoPanel(self, flag, map=False):
+		self._infoPanel.setPanelVisible(flag)
+		self._infoTimer.setEnabled(0)
+		if flag:
+			#show alert panel for 10 secs and then dismiss it
+			self._infoTimer = vizact.ontimer2(10, 1, self.ShowInfoPanel, False)
+			try:	#this runs only for players having a _mapWin property
+				self._infoPanel.setText(self._mapWin._infoPanel.getText())
+			except:
+				pass
+		#RUNS ONLY FROM MAP: update the info panels of the remaining players
+		if map:
+			for p in self.players.values():
+				p.ShowInfoPanel(flag)
+		
 	def ShowErrorOnMap(self, machine, mPos, flag):
 		if flag == 0:	#remove error if there is one for this machine
 			if self._alerts.has_key(machine):
 				self._alerts[machine].remove()
 				del self._alerts[machine]
 				del self._messages[machine]
-		else:	#add new alert if there is NOT one already for this machine
+		else:	#add or update the alert icon in every other case
 			#aPos = self._window.worldToScreen(mPos)
 			#newAlert = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=50, pos=aPos)
+			#add new alert if there is NOT one already for this machine
+			alertSymbols = {1:'a', 2:'w'}
 			if not self._alerts.has_key(machine):
 				newAlert = viz.addTexQuad(size=1.25)
-				newAlert.texture(viz.addTexture('textures/alert_icon.png'))
+				newAlert.texture(self._alertIcons[alertSymbols[flag]])
 				newAlert.renderOnlyToWindows([self._window])
 				newAlert.setPosition(mPos[0], 0, mPos[2])
 				newAlert.setEuler(0, 90, 0)
 				self._alerts[machine] = newAlert
+			else:	#update the machine error if an alert if already defined
+				self._alerts[machine].texture(self._alertIcons[alertSymbols[flag]])
+		#show or hide the alert panel depending on the current alerts
+		self._alertPanel.setPanelVisible(len(self._alerts)>0)
+		if len(self._alerts) == 0:
+			self._alertPanel.setIconTexture(self._alertIcons['a'])
 		
 	def AddAvatars (self):
 		self.avatars = []
@@ -105,15 +265,18 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def UpdateAlerts (self, mes):
 		# update the icon on the map and the message queue
 		try:
+			text = mes.split('/')[2]
 			# parse message for different types (i-> info, a->alert)
-			if len(mes.split('i/')) > 1:	#this is the info
-				mac = 'info'
-			elif len(mes.split('a/')) > 1:	#this is the alert
-				mac = mes.split('/')[1]
-
-			mes = mes.split('/')[2]
-			self._alert.message(mes)
-			self._messages[mac] = mes
+			if mes.split('/')[0] == 'i' > 1:	#this is the info (not added to _messages)
+				mach = 'info'
+				self._infoPanel.setText(text)
+				self.ShowInfoPanel(True, map=True)
+			else: 	#this is the alert or warning (added to _messages)
+				atype= mes.split('/')[0]
+				mach = mes.split('/')[1]
+				self._messages[mach] = atype+'^'+text
+				self.DisplayAlert(text)
+			# print "MESSAGES", self._messages
 		except:
 			pass
 		
@@ -129,6 +292,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		items = self._messages.keys()
 		try:
 			# display the info only once if there are alerts in the queue
+			# this is void since the info message is not stored in the _messages anymore
 			if self._cycler == 'info' and len(self._messages) > 1:
 				del self._messages['info']
 			ind = items.index(self._cycler)
@@ -137,29 +301,26 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				self._cycler = items[0]
 			else:
 				self._cycler = items[ind]
+			#print "[TRY] Cycler returned from GetMessage:", self._cycler	
 		except:
 			self._cycler = items[len(items)-1]
-		
+			#print "[EXCEPT] Cycler returned from GetMessage:", self._cycler
 		return self._cycler
 		
 	def CycleAlertsTask (self):
 		self._cycler = None		#the next item in the list to display (starts with last)
 		fade_out = vizact.fadeTo(0, 1, time=0.5, interpolate=vizact.easeOutStrong)
 		fade_in = vizact.fadeTo(1, 0, time=0.5, interpolate=vizact.easeOutStrong)
+		#set all alerts on map to 100% opaque so that they don't stay semi-transparent
 		for i in [a for m, a in self._alerts.iteritems() if m != 'info']:
 			a.alpha(1)
 		while True:
 			data = yield viztask.waitDirector(self.GetNextMessage)
 			nextKey = data.returnValue
-			self._alert.message(self._messages[nextKey])
-			if nextKey == 'info':
-				self._alert.icon(self._infoIcon)
-				self._alert.bgcolor(.3,.3,1,.4)
-				self._alert.bordercolor(0,0,.5,1)
+			if nextKey == 'info':	#not verified anymore because info not in _messages
+				self._infoPanel.setText(self._messages[nextKey])
 			else:
-				self._alert.icon(self._alertIcon)
-				self._alert.bgcolor(.3,.3,0,.4)
-				self._alert.bordercolor(.5,0.5,0,1)
+				self.DisplayAlert(self._messages[nextKey])
 			if nextKey != 'info':
 				alertObj = self._alerts[nextKey]
 				yield viztask.addAction(alertObj, fade_out)
@@ -172,7 +333,14 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				yield viztask.addAction(alertObj, fade_in)
 			else:
 				yield viztask.waitTime(5)
-			
+	
+	def DisplayAlert (self, tex):
+		typ = tex.split('^')[0]
+		tex = tex.split('^')[1]
+		self._alertPanel.setIconTexture(self._alertIcons[typ])
+		self._alertPanel.getPanel().setTheme(self._alertThemes[typ])
+		self._alertPanel.setText(tex)
+		
 	##############################
 	### FOR THE PLAYER WINDOWS ###
 	
@@ -205,7 +373,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._message.setPosition(-80,32,0)
 		self._message.setParent(self._hud)
 		self.ResizePanel()
-	
+		#add the info panels
+		self.CreateInfoPanels()
+		
 	def ResizePanel(self):
 		winSize = self._size
 		#calculate size of panel according to 200x450pix for 1440x900pix window
@@ -224,6 +394,11 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		# Check if the cursor intersect with an object
 		if isinstance(self._player, int):
 			self.CheckPickObject()
+		# Check if the player should check for updated alerts according to proximity to machinery
+		if len(self._updateAlerts) > 0:
+			for a, c in reversed(list(enumerate(self._updateAlerts))):
+				self.CheckForAlertNearMachine(a)
+				del self._updateAlerts[a]
 	
 	def CheckPickObject(self):
 		if self._holding != None:
@@ -247,14 +422,14 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				if toolObj in self._factory.tools.values() and self.WithinReach(toolObj):
 					self._picking = toolObj
 					self._picking.color(viz.RED, op=viz.OP_OVERRIDE)
-				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2.5):
+				elif toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2):
 					self._picking = toolObj
 					self._picking.color(self._pickcolor, op=viz.OP_OVERRIDE)
 				else:
 					self.ResetPick()
 			elif self._selected != None:
 				# check if the picked object is a factory component and light it green if it is
-				if toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 3):
+				if toolObj in self._factory.components.values() and self.WithinReach(toolObj, True, 2.5):
 					self._picking = toolObj
 					self._picking.color(self._pickcolor, op=viz.OP_OVERRIDE)
 				else:
@@ -287,15 +462,23 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		
 	### SETTING THE TOOLBOX ###
 	def AddToToolbox (self, tool):
-		obj = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=75)
-		obj.setParent(self._hud)
-		obj.setPosition(-60+len(self._toolbox)*45, 60, 0)
-		obj.setScale(1,.4,1)
-		tool = self._factory.FilterAddedTool(tool)	# adds 'ful' for 'can' if full
-		textur = viz.addTexture('textures/tool_'+tool+'.png', useCache=True)
-		textur_sel = viz.addTexture('textures/tool_'+tool+'_sel.png', useCache=True)
-		obj.texture(textur)
-		self._toolbox[tool] = {'obj': obj, 'tex': textur, 'sel': textur_sel}
+		if len(self._toolbox) < 4:
+			if tool == 'mat' and 'mat' in self._toolbox:
+				self._feedback = 'oneOnly'
+				return False
+			obj = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=75)
+			obj.setParent(self._hud)
+			obj.setPosition(-60+len(self._toolbox)*45, 60, 0)
+			obj.setScale(1,.4,1)
+			tool = self._factory.FilterAddedTool(tool)	# adds 'ful' for 'can' if full
+			textur = viz.addTexture('textures/tool_'+tool+'.png', useCache=True)
+			textur_sel = viz.addTexture('textures/tool_'+tool+'_sel.png', useCache=True)
+			obj.texture(textur)
+			self._toolbox[tool] = {'obj': obj, 'tex': textur, 'sel': textur_sel}
+			return True
+		else:
+			self._feedback = 'inventory'
+			self.DisplayLocalMessage('inventory')
 		
 	def RemoveFromToolbox (self, tool=None):
 		if tool == None:
@@ -388,15 +571,18 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def PickObject(self, press):
 		# set the pressed status of the user's trigger
 		self._pressed = press
+		if not press:	#don't run the script on release
+			return
 		try:
 			if self._picking != None:
 				# TODO: Make a list of actions and triggers
 				if self._picking in self._factory.tools.values():
 					# get the tool name (key) from the object to be picked (value) from the tools list (dict)
 					tool = [key for key, value in self._factory.tools.iteritems() if value == self._picking][0]
-					print "Picking...", self._picking
-					self.AddToToolbox(tool)
-					self.RemoveFromWorld()
+					if self.AddToToolbox(tool):
+						print "Picking...", self._picking
+						self.RemoveFromWorld()
+						
 				elif self._picking in self._factory.components.values():
 					# get the component name from the object to be picked from the factory components list
 					held = self._selected
@@ -405,17 +591,20 @@ class PlayerView(FSM_Actions.FSM_Actions):
 					print "%s %s on %s" %(pressOrRelease, held, comp)
 					self._iMach = self._factory.componentPar[comp]
 					(mActions, mMessage) = self._fsm[self._iMach].evaluate_multi_input(held+'_'+comp, self, self._pressed)
-					self.BroadcastActionsMessages(mActions, mMessage)
+					self.BroadcastActionsMessages(mActions, mMessage, (held, comp))
 					#sys.exit()	#still goes to except after executing else(?)
 		except AttributeError:
 			pass #print "No object under cursor!"
 		else:
 			pass
 
-	def DropObject (self, putBack=True):
+	def DropObject (self, putBack=True, matOnTray=False):
 		if self._holding != None:
 			if self._selected == 'hand':
 				print "Cannot drop my hand!"
+				return
+			elif self._selected == 'mat' and not matOnTray:
+				self._feedback = 'noDrop'
 				return
 			toolToDrop = self._selected
 			print "Dropped " + toolToDrop
@@ -441,24 +630,65 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	########################################################
 	## SENDING ACTIONS AND MESSAGES TO FSM_ACTIONS MODULE ##
 	
-	def BroadcastActionsMessages (self, acts, mess):
+	def BroadcastActionsMessages (self, acts, mess, interact=None): #interact is tuple (tool, comp)
 		#execute action sequence (subclass function)	
-		self.execute_actions(acts)	
+		self.execute_actions(acts)
+		#this executes when no messages exist and interaction excludes hand_mat picked
+		#because there is a mat pick check with delay (0.1sec) for action 'picking_mat'
+		if mess == [] and interact != None and self._feedback != 'picked':
+			#_feedback is updated by the actions in the previous function call
+			self.DisplayLocalMessage(self._feedback, interact)
+		self._feedback = None
+		alertsUpdated = False	#ensures alerts are updated in every case
 		#check if the message is a local (user-only) or global message (all users)
 		for m in mess:
 			if m == None:
 				continue
-			if m.rpartition('/')[1] == '':
+			if m.rpartition('/')[1] == '':		#if there is no slash in the message
 				self.DisplayLocalMessage(m)		#display message on player's window
 			else:
+				alertsUpdated = True
 				self.DisplayGlobalMessage(m)	#display message on map  (subclass function)
-	
+		#update the alerts cycling in case there is error0 and have not been updated before
+		if not alertsUpdated and len(fnmatch.filter(acts, 'error0*'))>0:
+			self.DisplayGlobalMessage('')
+		
 	def DisplayGlobalMessage (self, mes):
 		self._mapWin.UpdateAlerts(mes)
 		
-	def DisplayLocalMessage(self, mes):
+	def DisplayLocalMessage(self, mes, toolComp=None):
+		try:	#deactivate the previously enabled timer
+			self._localTimer.setEnabled(False)
+		except:
+			pass
+		if mes == None:
+			if toolComp[0] == 'hand':
+				mes = 'There is nothing you can do with the %s, at this moment' % self.tooltips[toolComp[1]]
+			else:
+				mes = 'There is no reason to use the %s on the %s, at this moment' % (self.tooltips[toolComp[0]], self.tooltips[toolComp[1]])
+		elif mes == 'inventory':
+			mes = 'You cannot carry more than three items at a time; drop one of the tools and try again'
+		elif mes == 'noDrop':
+			mes = 'You cannot drop the mat, you need to place it on the tray of a press'
+		elif mes == 'oneOnly':
+			mes = 'You cannot carry more than one loaded mat at a time because it is too heavy'
 		mes = '\n'.join(textwrap.wrap(mes, 18))
 		self._message.message(mes)
+		self._localTimer = vizact.ontimer2(10, 1, self.DismissMessage)
+		
+	def DismissMessage (self):
+		self._message.message('')
+	
+	def LoadToolTips (self):	#load tool explanations from an external file
+		import xlrd	#load the library for reading Excel files
+		self.tooltips = {}
+		workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
+		#Get the first sheet in the workbook by name
+		sheet1 = workbook.sheet_by_name('tools')
+		for rowNumber in range(sheet1.nrows):
+			rowData = sheet1.row_values(rowNumber)
+			self.tooltips[rowData[0]] = rowData[1]
+		print self.tooltips
 		
 if __name__ == '__main__':
 

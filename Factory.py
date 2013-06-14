@@ -96,9 +96,6 @@ class Factory ():
 		if 'pumpR' in args:		#ADD THE RIGHT PUMP
 			self.pumpR = Machinery.Pump(self.factory, [-17,2.6,-6.5], [-90,0,0], 'R', self)
 			self.machines['pumpR'] = self.pumpR
-			base1=self.factory.add('models/objects/concrete base.ive')
-			base1.setPosition(-17.5,0,-6.5)
-			base1.scale(.2,.2,.2)
 			# wheels and belts
 			wheel_pumpR = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 			wheel_pumpR.setPosition(-16.83,5.77,-7.143)
@@ -112,9 +109,6 @@ class Factory ():
 		if 'pumpL' in args:		#ADD THE LEFT PUMP
 			self.pumpL = Machinery.Pump(self.factory, [-20.3,2.6,-6.5], [-90,0,0], 'L', self)
 			self.machines['pumpL'] = self.pumpL
-			base2=self.factory.add('models/objects/concrete base.ive')
-			base2.setPosition(-20.8,0,-6.5)
-			base2.scale(.2,.2,.2)
 			# wheels and belts
 			wheel_pumpL = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 			wheel_pumpL.setPosition(-20.13,5.77,-7.143)
@@ -127,12 +121,12 @@ class Factory ():
 				pos=[-20.8,3,-7.85], euler=[180,0,0], texture=viz.addTexture('textures/sign_pump1.png'))
 				
 		if 'pressL' in args:	#ADD THE 2 PRESSES
-			self.pressL = Machinery.Press(self.factory, [-17.4,0,6.5], [180,0,0])
+			self.pressL = Machinery.Press(self.factory, [-17.4,0,6.5], [180,0,0], 'L')
 			self.machines['pressL'] = self.pressL
 			signP1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
 			              pos=[-17.4,2.5,7.78], texture=viz.addTexture('textures/sign_press1.png'))
 		if 'pressR' in args:
-			self.pressR = Machinery.Press(self.factory, [-14.1,0,6.5], [180,0,0])
+			self.pressR = Machinery.Press(self.factory, [-14.1,0,6.5], [180,0,0], 'R')
 			self.machines['pressR'] = self.pressR
 			signP2 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
 			              pos=[-14.1,2.5,7.78], texture=viz.addTexture('textures/sign_press2.png'))
@@ -329,18 +323,18 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-	machines = ('millR', 'loader', 'lavalL', 'lavalR', 'scale', 'oilPump')
+	machines = ('millL', 'pressR', 'loader', 'lavalL')
 #	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
 	oliveFactory = Factory()
 	oliveFactory.AddMachinery(machines)
 	oliveFactory.AddAllTools()
-	oliveFactory.AddOtherStuff()
+#	oliveFactory.AddOtherStuff()
 	
 	# pivot around object
-	cam = vizcam.PivotNavigate(distance=5)
-#	cam.centerNode(oliveFactory.millR.mixedPulp)
+#	cam = vizcam.PivotNavigate(distance=5)
+#	cam.centerNode(oliveFactory.millL.mixedPulp)
 #	cam.centerNode(oliveFactory.pressR.mats)
 #	cam.centerNode(oliveFactory.pumpR.object)
-	cam.centerNode(oliveFactory.lavalL.object)
+#	cam.centerNode(oliveFactory.lavalL.object)
 #	cam.centerNode(oliveFactory.engine.object)
-	cam.rotateUp(30)
+#	cam.rotateUp(30)

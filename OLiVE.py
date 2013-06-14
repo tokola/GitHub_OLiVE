@@ -5,6 +5,7 @@ sys.dont_write_bytecode = True
 import viz
 import vizact
 import vizjoy
+import vizproximity
 from string import upper, lower
 import pickle
 import Factory
@@ -24,9 +25,9 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-#MACHINERY = ('lavalR', 'lavalL', 'pressR', 'pressL', 'oilPump', 'scale')
+MACHINERY = ('lavalL', 'boiler', 'engine', 'millR', 'pumpR', 'pressR', 'loader', 'oilPump')
 #MACHINERY = ('boiler', 'engine', 'lavalR', 'lavalL', 'millR', 'pressR', 'pumpR', 'loader', 'oilPump')
-MACHINERY = ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL')
+#MACHINERY = ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
 
@@ -34,12 +35,12 @@ DEVICE = 'XBOX'
 
 gPlayers = {}
 
-gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-5,EYEHEIGHT,-5]},
+gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,EYEHEIGHT,0]},
                2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
                3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
 
 def splitViews ():
-	global floorMap
+	global floorMap, playerByView
 
 	# set the four different views in seperate windows (3 players and the map)
 	floorMap = Window.PlayerView(winPos=[0.5,1])
@@ -62,13 +63,12 @@ def splitViews ():
 	gPlayers[1] = {'player': p1, 'joy': None, 'avatar': a1}
 	gPlayers[2] = {'player': p2, 'joy': j2, 'avatar': a2}
 	gPlayers[3] = {'player': p3, 'joy': j3, 'avatar': a3}
+	playerByView = {}	#dictionary of players by view
 	for p in gPlayers.values():
 		av = p['avatar']
+		playerByView[p['player']._view] = p['player']
 		av._avatar.renderToAllWindowsExcept([p['player']._window, floorMap._window])
 		av._mapAva.renderOnlyToWindows([floorMap._window])
-	#p2.AddToToolbox('wrench')
-	#p2.AddToToolbox('hammer')
-	#p2.AddToToolbox('shovel')
 	
 vizact.onkeydown('v', splitViews)
 
@@ -253,21 +253,24 @@ def MachineState (mach, state, inp, sync=False):
 		output = STATES[mach][state]['inputs'][inp]['output']
 		info   = STATES[mach][state]['inputs'][inp]['info']
 		nextSt = STATES[mach][state]['inputs'][inp]['next']
-		
 	else:
 		nextSt, output, info = None, [], []
 		print "This input is not defined!"
+	# create a copy of output and info to avoid alterning the original STATES
+	output2 = list(output)
+	info2 = list(info)
 	# change remaining machine states if this is an entry input
 	# and this function was not called through SynchFactoryStates
 	if inp == 'entry' and sync == True:
 		act, mess = SyncFactoryStates(state)
 	try:
-		output += act
-		info += mess
-		print "Machine state returns:", nextSt, output, info
+		# add the new actions/messages returned from syncing other SMs
+		output2 += act
+		info2 += mess
+		print "Machine state returns:", nextSt, output2, info2
 	except:
 		pass
-	return nextSt, (output, info)
+	return nextSt, (output2, info2)
 
 def SyncFactoryStates (state):
 	global FaSTATES
@@ -277,6 +280,9 @@ def SyncFactoryStates (state):
 		for st in FaSTATES[state]:
 			newState = None
 			mach = st.split('/')[0]
+			#skip this machine if not in the FSM
+			if not FSM.has_key(mach):
+				continue
 			if ':' in st:
 				stOR = st.split('#')
 				for stat in stOR:
@@ -310,16 +316,62 @@ def getFaStates ():
 ### INITIALIZE GAME ###
 #######################
 
+def AddProximitySensors():
+	manager = vizproximity.Manager()
+#	manager.setDebug(viz.ON)
+	#Add line below so proximity shape does not interfere with picking
+#	manager.getDebugNode().disable([viz.PICKING,viz.INTERSECTION])
+	manager.setDebugColor(viz.RED)
+	manager.setDebugActiveColor(viz.YELLOW)
+	for p in gPlayers.values():
+		target = vizproximity.Target(p['player']._view)
+		manager.addTarget(target)
+	# add the stairs as sensors to increase step size
+	sensor_stairL = vizproximity.Sensor(vizproximity.RectangleArea([1,.5]), source=olivePress.factory.getChild('stairL-GEODE'))
+	sensor_stairR = vizproximity.Sensor(vizproximity.RectangleArea([1,.5]), source=olivePress.factory.getChild('stairR-GEODE'))
+	manager.addSensor(sensor_stairL)
+	manager.addSensor(sensor_stairR)
+	manager.onEnter(sensor_stairL, EnterStairs)
+	manager.onExit(sensor_stairL, ExitStairs)
+	manager.onEnter(sensor_stairR, EnterStairs)
+	manager.onExit(sensor_stairR, ExitStairs)
+	# add machine sensors to capture when player approaches one
+	sensors = {}
+	for m, mach in olivePress.machines.iteritems():
+		machSensor = vizproximity.Sensor(mach.proximityData[0], source=mach.proximityData[1])
+		manager.addSensor(machSensor)
+		manager.onEnter(machSensor, EnterMachine, m)
+		manager.onExit(machSensor, ExitMachine, m)
+		sensors[m] = machSensor
+
+def EnterStairs(e):
+	view = e.target.getSourceObject()
+	playerByView[view].ChangeStepSize(0.35)
+
+def ExitStairs(e):
+	view = e.target.getSourceObject()
+	playerByView[view].ChangeStepSize(0.1)
+
+def EnterMachine(e, mach):
+	view = e.target.getSourceObject()
+	playerByView[view].ApproachMachine(mach)
+
+def ExitMachine(e, mach):
+	view = e.target.getSourceObject()
+	playerByView[view].LeaveMachine(mach)
+	
 def initialize ():
 	global floorMap
 	
 	loadMachFSM_Xl()
 	loadFactFSM_Xl()
-	splitViews()
 	
-	olivePress.AddMachinery(MACHINERY) #, 'mill', 'pump', 'press')
+	olivePress.AddMachinery(MACHINERY)
 	olivePress.AddAllTools()
 	olivePress.AddOtherStuff()
+	
+	splitViews()
+	AddProximitySensors()
 	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
 	
 	(actions, message) = SyncFactoryStates ('FACTORY/START')
@@ -327,15 +379,18 @@ def initialize ():
 
 vizact.onkeydown('i', initialize)
 vizact.onkeydown('s', olivePress.StartFactory)	
-vizact.onkeydown('r', ReloadFSM)
+#vizact.onkeydown('r', ReloadFSM)
 
 initialize()
 
 
+		
 def timerExpire(id):
 	print "expiring...", id
-	
+	pl = 1	#this is the default player for issuing timer-expiration-based actions
 	# TIMERS FOR BOILER
+	if id == 5:
+		(actions, message) = FSM['boiler'].evaluate_state('anim-finished')
 	if id in [10, 15, 20]:	# timers for boiler alerts
 		(actions, message) = FSM['boiler'].evaluate_state(str(id)+'-mins-later')
 		
@@ -383,6 +438,11 @@ def timerExpire(id):
 		id, code = getTimerIDCode(id, animsL, animsR)
 		(actions, message) = FSM['laval'+chr(id)].evaluate_state('separation-'+code)
 		
+	# TIMER FOR LOADER
+	elif id in [201,202,203]:	# timer for picking mat expiration
+		pl = id - 200	#encoding player number in timer id
+		(actions, message) = FSM['loader'].evaluate_state('mat-picked')
+		
 	# TIMERS FOR OILP PUMP
 	elif id in [701, 702]:	# timer for oil pump expiration
 		anims = {701: 'tanks', 702: 'lavals'}
@@ -394,7 +454,7 @@ def timerExpire(id):
 		(actions, message) = FSM['scale'].evaluate_state('weigh-'+anims[id])
 		
 	#tell player 1 to broadcast messages and actions
-	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
+	gPlayers[pl]['player'].BroadcastActionsMessages(actions, message)
 		
 viz.callback(viz.TIMER_EVENT, timerExpire)
 
@@ -414,3 +474,4 @@ def sendEventToMachine (mach, action):
 
 def changeFSMState (mach, newState):
 	FSM[mach].set_start(newState)
+	sendEventToMachine(mach, 'entry')
