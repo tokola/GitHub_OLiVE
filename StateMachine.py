@@ -9,7 +9,8 @@ class StateMachine ():
 		self.currentState = None
 		self.endStates = []
 		self.inputs = {}	#stores inputs from different players
-		self.log = {}
+		self.log = {}		#stores user interaction data {user:[(trigger, actions, time)}
+		self.sLog= {}		#stores machine state changes {time:[state, trigger, new state]}
 		self.machine = mach	#the machine of this specific FSM
 
 	def add_state(self, state, handler, end_state=0):
@@ -64,7 +65,9 @@ class StateMachine ():
 							messages = messages + cargo[1]	#when the messages are lists
 					except:
 						messages = cargo[1]
-						
+		#log the time and state change caused by the input
+		self.log_state_change(prevState, eInput, actions)
+		
 		return (actions, messages)
 		#execute_actions(actions)		
 		#print_message(message)
@@ -83,9 +86,9 @@ class StateMachine ():
 			except KeyError:
 				pass
 			return None, ([], None)
-		# make a trigger from all the players' inputs
+		# make a trigger from all the players' inputs, e.g. {1:'hand_coal', 2:'hand_hammer'}
 		sortInputs = self.inputs.values()
-		sortInputs.sort()
+		sortInputs.sort()	#inputs should be recorded in alphabetical order in Excel
 		trigInput = ', '.join(sortInputs)
 		
 		(acts, mess) = self.evaluate_state(trigInput)
@@ -110,88 +113,12 @@ class StateMachine ():
 		for u, i in user_input.iteritems():
 			self.log.setdefault(u._player, []).append((i, actions, round(viz.tick(), 2)))
 		#print "Log file:", self.log
-			
+		
+	def log_state_change (self, oldState, trigger, actions):
+		self.sLog[round(viz.tick(),2)] = [oldState, trigger, self.currentState, actions]
+		#print "Time: %s State: %s, Input: %s, New state: %s" % (round(viz.tick(),2), prevState, eInput, self.currentState)
+		
 if __name__ == '__main__':
 	viz.go()
-	
-	def idle (args):
-		print "Game started!"
-		return 'Boiler-off/empty', ([], None)
-		
-	def Boiler_empty (*args):
-		# If all args are received this is the entry condition of the state
-		# otherwise check the input for this state
-		mInput = args[0]
-		if mInput == 'shovel_coal':
-			return 'Boiler-off/loaded', ([], None)
-		elif mInput == 'turn_valve_boiler':
-			mes = "The boiler is still empty"
-			return None, ([], mes)
-		#return None, 5
-		
-			
-	def Boiler_loaded (*args):
-		mInput = args[0]
-		if mInput == 'turn_valve_boiler':
-			return 'Boiler-on', (['turning_valve_on'], None)
-		elif mInput == 'shovel_coal':
-			mes = "The steam pressure is in good levels"
-			return None, ([], mes)
-	
-	def Boiler_working (*args):
-		mInput = args[0]
-		if mInput == 'turn_valve_boiler':
-			mes = "Steam supply is already on"
-			return None, ([], mes)
-		elif mInput == 'shovel_coal':
-			mes = "Boiler has enough pressure"
-			return None, ([], mes)
-		elif mInput == '10_mins_later':
-			return 'Boiler-low-pressure', ([], None)
-	
-	def Boiler_pressure (*args):
-		mInput = args[0]
-		if mInput == 'turn_valve_boiler':
-			mes = "Steam supply is already on"
-			return None, ([], mes)
-		elif mInput == 'shovel_coal':
-			mes = "Good! Steam supply is back to normal"
-			return 'Boiler-on', ([], mes)
-		elif mInput == '5_mins_later':
-			mes = "Danger! Boiler pressure is very low"
-			return None, (['dropping_pressure'], mes)
-		elif mInput == '10_mins_later':
-			return 'Boiler-on/empty', (['stopping_timer'], None)
-			
-	def Boiler_on_empty (*args):
-		mInput = args[0]
-		if mInput == 'turn_valve_boiler':
-			mes = "Steam supply is already on"
-			return 'Boiler-off/empty', ([], None)
-		elif mInput == 'shovel_coal':
-			mes = "You need to turn the vale off first"
-			return None, ([], mes)
-			
-	def print_message (mes):
-		try:
-			print "Message:", mes
-		except:
-			pass
-	
-	def execute_actions (act):
-		try:
-			if len(act) > 0:
-				print "Executing...", act
-		except:
-			pass
-			
+				
 	fsm=StateMachine()
-	fsm.add_state("Idle", idle)
-	fsm.add_state("Boiler-off/empty", Boiler_empty, [], "The boiler is currently turned off")
-	fsm.add_state("Boiler-off/loaded", Boiler_loaded, ['loading_boiler'], "Great! The boiler is being loaded with coal")
-	fsm.add_state("Boiler-on", Boiler_working, ['increasing_pressure', 'starting_timer'], "Good! You started steam supply to the engine")
-	fsm.add_state("Boiler-low-pressure", Boiler_pressure, ['dropping_pressure', 'error-low-pressure'], "Beware! Boiler pressure is low")
-	fsm.add_state("Boiler-on/empty", Boiler_on_empty, ['dropping_pressure', 'stopping_engine'], "The boiler stopped working due to inadequate pressure!")
-	fsm.add_state("game finished", None, end_state=True)
-	fsm.set_start('Idle')
-	#fsm.evaluate_state('start')

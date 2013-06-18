@@ -55,7 +55,7 @@ class FSM_Actions ():
 			elif 'pressure' in action:
 				#get the pressure and send it as an argument to the machine specified by the first word
 				machine = action.partition('_')[0]
-				pressure = action.rpartition('_')[2][:-3]
+				pressure = action.rpartition('_')[2][:-3]	#get psi or rpm value
 				exec('self._factory.'+machine+'.ChangePressure('+pressure+','+str(delay[0])+')')
 			elif action == 'lighting_furnace':	#coals appear inside furnace and light up
 				self._factory.boiler.CoalAction(2)
@@ -291,7 +291,7 @@ class FSM_Actions ():
 					LR = action[-1:]
 					laval = 'laval'+ LR
 					viz.starttimer(400+ord(LR), 7, 0)	#timer while transferring the pitcher -> anim-finshed
-					exec('self._factory.'+laval+'.MovePitcher(8)')
+					exec('self._factory.'+laval+'.MovePitcher('+str(delay[0])+')')
 			elif 'damaging_laval' in action:
 				LR = action[-1:]
 				laval = 'laval'+ LR
@@ -311,14 +311,14 @@ class FSM_Actions ():
 					viz.killtimer(ord(LR)+timers[timerTag])
 			
 			######## SCALE ACTIONS ###############
-			elif action == 'pitcher_on_scale':	# called from the lavals
+			elif action == 'pitcher_on_scale':	#called from the lavals
 				viz.starttimer(801, 1, 0)
-			elif action == 'weighing_pitcher':
-				self._factory.scale.WeighPitcher(delay[0])
+			elif action == 'weighing_pitcher':	#increase counter by delay[1] lbs
+				self._factory.scale.WeighPitcher(delay[0], delay[1])
 			elif action == 'finishing_production':
-				viz.starttimer(802, 1, 0)
+				viz.starttimer(802, delay[0], 0)
 			elif action == 'finishing_game':
-				print "GAME FINISHED with 400lbs produced!"
+				self._mapWin.GameFinish(delay[0])
 			
 			# REMOVING SMOKE FROM MACHINERY
 			elif 'removing_smoke' in action:
@@ -332,17 +332,33 @@ class FSM_Actions ():
 				errorCode = action.partition('_')[0][-1:]	#1=error on, 0=error off
 				self._mapWin.ShowErrorOnMap(mach, machPos, int(errorCode))
 				#check if any of the players is near a machine and update their alert panels
-				for p in self.players.values():
+				for p in self.PLAYERS.values():
 					p.CheckForAlertNearMachine(mach, int(errorCode))
 			
 			# SCORE KEEPING
 			elif 'score' in action:
 				print "Points:", delay[0]
 				self._mapWin.UpdateScore(delay[0])
+			elif action == 'revealing_total_counter':
+				self._mapWin.ShowTotalScore()
+			elif action == 'increasing_total':
+				self._mapWin.IncreaseOilTotal(delay[0], delay[1])
 				
-	def parse_action (self, tim):
-		timerList = tim.partition('[')[2].partition(']')[0].split(',')
+	def parse_action (self, act):
+		if act[-1:] == '*':	#keep the asterisk if inside the action
+			asterisk = '*'
+		else:
+			asterisk = ''
+		timerList = act.partition('[')[2].partition(']')[0].split(',')
 		timers = None
 		if timerList[0] != '':
 			timers = [int(t) for t in timerList]
-		return tim.partition('[')[0], timers
+		#return just the action, including asterisk, and the arg list seperately
+		return act.partition('[')[0]+asterisk, timers
+		
+		
+if __name__ == '__main__':
+
+	viz.go()
+
+	fsm = FSM_Actions()

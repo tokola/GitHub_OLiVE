@@ -59,17 +59,10 @@ class Pump():
 	
 	def TurnValve (self, dir):
 		self.components['bypass'+self.LR].addAction(vizact.spin(1*dir,0,0,360,3))
-	
-	def IncreasePressure (self):
-		self.bar.addAction(vizact.call(self.ChangePressure, 1500))
-		self.bar.addAction(vizact.waittime(15))
-		self.bar.addAction(vizact.call(self.ChangePressure, 2000))
 		
 	def ChangePressure(self, pressure, duration):
 		self.gauge.endAction()
-		#dict of tuples (degrees of rotation, anim duration) for every pressure value
-		presToAngle = {4500: 270, 4000: 240, 1500: 90, 0:0}
-		angle = presToAngle[int(pressure)]
+		angle = int(pressure) * 0.06
 		ease = vizact.easeInOutCubic
 		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
 		if angle == 0:
@@ -643,10 +636,11 @@ class Laval ():
 #		self.gauge = self.object.getChild('gauge')
 		#insert group right below gauge transform since the OFFSET and GEODE subobjects are not pivoted correctly.
 		self.gauge = self.object.insertGroupBelow('gauge')
-#		self.gauge.center(.069, .762, -.238)
 		self.oil = self.object.getChild('oil')
+		self.oil.hint(viz.COPY_SHARED_MATERIAL_HINT)
 		self.oil.alpha(0)
 		self.water = self.object.getChild('water')
+		self.water.hint(viz.COPY_SHARED_MATERIAL_HINT)
 		self.water.alpha(0)
 		self.getComponents()
 		#this is called by the AddProximitySensors() of the main module
@@ -672,8 +666,7 @@ class Laval ():
 			self.componentPos[self.wheel] = [lavalPos[0]+.35, lavalPos[1]+1.25, lavalPos[2]-2.4]
 			self.components['crazyW'] = self.crazy_wheel
 			self.componentPos[self.crazy_wheel] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
-		else:
-			self.faClass.belts['lavalL'] = Belt(self.belt)
+		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
 	
 	def DetachBelt (self):
 		self.belt.visible(0)
@@ -681,15 +674,15 @@ class Laval ():
 	def AttachBelt (self):
 		self.belt.addAction(vizact.fadeTo(1, begin=0, time=1))
 		self.belt.visible(1)
-		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
+#		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
 		
 	def StartSeparation (self, start):
 		self.oil.addAction(vizact.fadeTo(start, time=.5))
-		self.water.addAction(vizact.fadeTo(start, 1))
+		self.water.addAction(vizact.fadeTo(start, time=.5))
 		if start == 1:
 			pitcher = self.components['pitcher'+self.LR]
 			oilSurf = pitcher.getChild('oilSurface')
-			oilSurf.addAction(vizact.moveTo([0,0,1.45], time=10))
+			oilSurf.addAction(vizact.moveTo([0,.5,0], time=10))
 	
 	def MovePitcher (self, t):
 		pitcher = self.components['pitcher'+self.LR]
@@ -706,8 +699,7 @@ class Laval ():
 	def ChangePressure(self, pressure, duration):
 		self.gauge.endAction()
 		#dict of tuples (degrees of rotation, anim duration) for every pressure value
-		presToAngle = {4500: 270, 3000: 180, 1500: 90, 0:0}
-		angle = presToAngle[int(pressure)]
+		angle = int(pressure) * 0.3
 		ease = vizact.easeInOutCubic
 		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
 		if angle == 0:
@@ -779,7 +771,7 @@ class OilPump ():
 		self.wheelC.center(.244, .638, -.026)
 		self.oilDrop = self.object.getChild('oilDrop')
 		self.oilDrop.alpha(0)
-		self.faClass.belts['oilPump'] = Belt(self.object.getChild('belt'))
+		self.faClass.belts['oilPump'] = Belt(self.object.getChild('belt_oil'))
 		self.getComponents()
 		#this is called by the AddProximitySensors() of the main module
 		self.proximityData = (vizproximity.CircleArea(1.2), self.object)
@@ -795,8 +787,8 @@ class OilPump ():
 		dir = -dir
 		handle = self.components['handle']
 		pos = handle.getPosition()
-		newPos = [pos[0]+.1*dir, pos[1], pos[2]]
-		self.faClass.belts['oilPump'].MoveBelt(-dir, .1)
+		newPos = [pos[0]+.095*dir, pos[1], pos[2]]
+		self.faClass.belts['oilPump'].MoveBelt(-dir, .095)
 		handle.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))
 		if dir < 0:
 			handle.addAction(vizact.call(self.StopCrazy))
@@ -827,7 +819,7 @@ class OilPump ():
 			
 	def EndMotion (self):
 		self.wheelP.endAction()
-		self.cyl.endAction()
+		self.crankshaft.endAction()
 		
 	def update(self):
 		#make the connecting rod look at the cap every frame
@@ -854,14 +846,11 @@ class OilPump ():
 class Boiler ():
 	"""This is the Boiler class"""
 	def __init__(self, factory, pos):
-		self.object = factory.add('models/boiler.ive')
-		self.hatch = (self.object.getChild('HatchDoorL'), self.object.getChild('HatchDoorR'))
-		self.hatch[0].center(-.247, 1.494, -.253)
-		self.hatch[1].center(.536, 1.504, -.242)
-		self.gauge = self.object.getChild('velona')
-		self.gauge.center(.25, 2.776, .248)
+		self.object = factory.add('models/boiler2.ive')
+		self.hatch = (self.object.insertGroupBelow('HatchDoorL'), self.object.insertGroupBelow('HatchDoorR'))
+		self.gauge = self.object.insertGroupBelow('velona')
 		fire = viz.add('textures/fire.mov', loop=1, play=1)
-		self.fire = viz.addTexQuad(texture=fire, pos=[7.2,1.2,0], alpha=0)
+		self.fire = viz.addTexQuad(texture=fire, pos=[7.5,1.2,0], alpha=0)
 		self.fire.visible(0)
 		self.object.setPosition(pos)
 		self.getComponents()
@@ -889,8 +878,7 @@ class Boiler ():
 		
 	def ChangePressure(self, pressure, duration):
 		self.gauge.endAction()
-		presToAngle = {4500: 270, 3000: 180, 1500: 90, 0:0}
-		angle = presToAngle[int(pressure)]
+		angle = int(pressure) * 2.25
 		ease = vizact.easeInOutCubic
 		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
 		if angle == 270:
@@ -948,9 +936,10 @@ class Scale ():
 		#this is called by the AddProximitySensors() of the main module
 		self.proximityData = (vizproximity.RectangleArea([2.5,2.5]), self.object)
 		
-	def WeighPitcher (self):
-		self.base.addAction(vizact.move(0,-0.015,0, time=3))
-		self.needle.addAction(vizact.spin(0,120,0, speed=60, dur=3))
+	def WeighPitcher (self, duration, amount):
+		self.base.addAction(vizact.move(0,-0.01,0, time=duration))
+		angle = amount * 0.6
+		self.needle.addAction(vizact.spin(0,120,0, speed=angle/duration, dur=duration))
 		
 	def Start (self):
 		pass

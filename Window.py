@@ -18,7 +18,7 @@ GRABDIST = 2	# The threashold for grabbing/interacting with items
 class PlayerView(FSM_Actions.FSM_Actions):
 	"""This is the class for making a new view"""
 	
-	players = WeakValueDictionary()	#holds all player instances (used by FSM_Actions)
+	PLAYERS = WeakValueDictionary()	#holds all player instances (used by FSM_Actions)
 	sounds = {'score1':viz.addAudio('sounds/score1.wav'), 'score0':viz.addAudio('sounds/score0.wav')}
 	
 	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, name=None, sm=None, fmap=None):
@@ -37,7 +37,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._name = name
 		#check if this is a player window
 		if player in [1,2,3]:
-			self.players[player] = self	#list of all player instances (used by FSM_Actions)
+			self.PLAYERS[player] = self	#list of all player instances (used by FSM_Actions)
 			self._view.stepSize(0.1)
 			self._view.collisionBuffer(0.25)
 			self._view.getHeadLight().disable()
@@ -58,6 +58,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._pressed = False	#True is player presses a button
 			self._pickcolor = viz.GREEN
 			self._feedback = None	#feedback message as result of interaction (not in FSM)
+			self._iLog = []			#for logging picked and dropped tools from inventory
+			self._proxLog = []		#for logging proximity to machines (enter, exit)
+			self._pLog = []			#for logging position data
 			#set an update function to take care of window resizing (priority=0)
 			self._updateFunc = vizact.onupdate(0, self.Update)
 			self.LoadToolTips()
@@ -81,6 +84,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def ApproachMachine(self, machine):
 #		print "Player", self._name.getMessage(), "approached", machine
 		self._nearMachine = machine
+		self.LogProximity(machine, 1)
 		if self._mapWin._messages.has_key(machine):
 			mes = self._mapWin._messages[machine]
 			self.DisplayAlert(mes)
@@ -90,6 +94,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def LeaveMachine(self, machine):
 #		print "Player", self._name.getMessage(), "left", machine
 		self._nearMachine = None
+		self.LogProximity(machine, 0)
 		if self._mapWin._alerts.has_key(machine):
 			self._alertPanel.setIconTexture(self._alertIcons['a'])
 			self._alertPanel.setPanelVisible(0)
@@ -160,7 +165,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._score.font("Segoe UI")
 		self._score.alignment(viz.ALIGN_RIGHT_BASE)
 		self._scorePanel.addRow([self._scoreIcon, row1text, self._score])
-		row2text = viz.addText('Olive Oil (lbs)')
+		row2text = viz.addText('Olive Oil (lbs)   ')
 		row2text.font("Segoe UI")
 		self._oilIcon = viz.addTexQuad(size=25, texture=viz.add('textures/oil_icon.png'))
 		self._oil= viz.addText('000')
@@ -172,21 +177,24 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		viz.link(self._window.RightTop, self._scorePanel, offset=(-10,-45,0))
 		
 	def ShowTotalScore (self):
-		#add third row with the total score
-		row3text = viz.addText('Total')
-		row3text.font("Segoe UI")
-		row3icon = viz.addTexQuad(size=25)
-		self._total= viz.addText('000')
-		self._total.font("Segoe UI")
-		self._total.alignment(viz.ALIGN_RIGHT_BASE)
-		self._scorePanel.addRow([row3icon, row3text, self._total])
+		#add third row with the total score if not added already
+		try:
+			self._total.alignment(viz.ALIGN_RIGHT_BASE)
+		except:
+			row3text = viz.addText('Olive points')
+			row3text.font("Segoe UI")
+			row3icon = viz.addTexQuad(size=25, texture=viz.add('textures/total_icon.png'))
+			self._total= viz.addText('000')
+			self._total.font("Segoe UI")
+			self._total.alignment(viz.ALIGN_RIGHT_BASE)
+			self._scorePanel.addRow([row3icon, row3text, self._total])
 		
-	def IncreaseOilTotal (self, dur):
+	def IncreaseOilTotal (self, dur, amount):
 		score = int(self._score.getMessage())
 		oil = int(self._oil.getMessage())
 		total = int(self._total.getMessage())
-		oilCounter = vizact.mix(oil, oil+200, time=dur)
-		totalCounter = vizact.mix(total, total+score*200, time=dur)
+		oilCounter = vizact.mix(oil, oil+amount, time=dur)
+		totalCounter = vizact.mix(total, total+score*amount, time=dur)
 		self._total.addAction(vizact.call(self.CounterIncrease, self._total, totalCounter))
 		self._oil.addAction(vizact.call(self.CounterIncrease, self._oil, oilCounter))
 	
@@ -215,6 +223,42 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	
 	def resetNewScore (self):
 		self._newScore = None
+	
+	def GameFinish (self, delay):
+		self.info = vizinfo.add('Congratulations!')
+		self.info.visible(0)
+		self.info.icon(viz.add('textures/c-olive_icon.png'))
+		self.info.add(viz.TEXT3D, 'You have finished the game \nproducing %s lbs of olive oil. \n' % self._oil.getMessage())
+		self.info.add(viz.TEXT3D, 'Your team statistics are:')
+		self.info.translate(0.1,0.95)
+		self.info.alignment(vizinfo.UPPER_LEFT)
+		self.info.scale(2.4,2.6)
+		self.info.messagecolor(100,100,0)
+		self.info.bgcolor(viz.BLACK, 0.8)
+		self.info.bordercolor([100,100,0], .9)
+		pointsI = viz.addTexQuad(texture=viz.add('textures/total_icon.png'))
+		timeI = viz.addTexQuad(texture=viz.add('textures/time_icon.png'))
+		points = self.info.add(viz.TEXQUAD, 'Olive points: %s' % self._total.getMessage(), pointsI)
+		time = self.info.add(viz.TEXQUAD, 'Time taken: %s' % self.ConvertTime(viz.tick()), timeI)
+		self.info.shrink()
+		#hide all other panels
+		self._scorePanel.visible(0)
+		self._infoPanel.visible(0)
+		self._alertPanel.visible(0)
+		for p in self.PLAYERS.values():
+			p._infoPanel.visible(0)
+			p._alertPanel.visible(0)
+			p._hud.visible(0)
+		time.addAction(vizact.waittime(delay))
+		time.addAction(vizact.call(self.info.visible, 1))
+		time.addAction(vizact.waittime(.5))
+		time.addAction(vizact.call(self.info.expand))
+	
+	def ConvertTime(self, time):
+		time = round(time, 2)
+		mins = int(time/60)
+		secs = int(time%60)
+		return str(mins)+'\''+str(secs)+'\'\''
 		
 	def ShowInfoPanel(self, flag, map=False):
 		self._infoPanel.setPanelVisible(flag)
@@ -228,7 +272,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				pass
 		#RUNS ONLY FROM MAP: update the info panels of the remaining players
 		if map:
-			for p in self.players.values():
+			for p in self.PLAYERS.values():
 				p.ShowInfoPanel(flag)
 		
 	def ShowErrorOnMap(self, machine, mPos, flag):
@@ -387,11 +431,12 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._hud.setPosition(winSize[0]-200*xScale/2, winSize[1]-200*yScale/2)
 		
 	def Update(self):
+		self.LogPosition()
 		if self._window.getSize(viz.WINDOW_ORTHO) <> self._size:
 			self._size = self._window.getSize(viz.WINDOW_ORTHO)
 			if self._player in [1,2,3]:
 				self.ResizePanel()
-		# Check if the cursor intersect with an object
+		# Check if the cursor intersects with an object
 		if isinstance(self._player, int):
 			self.CheckPickObject()
 		# Check if the player should check for updated alerts according to proximity to machinery
@@ -571,16 +616,16 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def PickObject(self, press):
 		# set the pressed status of the user's trigger
 		self._pressed = press
-		if not press:	#don't run the script on release
-			return
+#		if not press:	#don't run this script because release should also run evaluate_multi_user
+#			return
 		try:
 			if self._picking != None:
-				# TODO: Make a list of actions and triggers
+				#check if the user is interacting with a tool or machine component
 				if self._picking in self._factory.tools.values():
 					# get the tool name (key) from the object to be picked (value) from the tools list (dict)
 					tool = [key for key, value in self._factory.tools.iteritems() if value == self._picking][0]
 					if self.AddToToolbox(tool):
-						print "Picking...", self._picking
+						self.LogInventory(tool, 1)
 						self.RemoveFromWorld()
 						
 				elif self._picking in self._factory.components.values():
@@ -607,7 +652,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 				self._feedback = 'noDrop'
 				return
 			toolToDrop = self._selected
-			print "Dropped " + toolToDrop
+			self.LogInventory(toolToDrop, 0)
 			self.LetObject()
 			self.ResetPick()
 			self.RemoveFromToolbox()
@@ -624,7 +669,6 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._picking.remove()
 		
 	def AddToWorld (self, dropped):
-		print self._selected, dropped
 		self._factory.AddTool(dropped)
 		
 	########################################################
@@ -688,7 +732,20 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		for rowNumber in range(sheet1.nrows):
 			rowData = sheet1.row_values(rowNumber)
 			self.tooltips[rowData[0]] = rowData[1]
-		print self.tooltips
+		#print self.tooltips
+	
+	def LogInventory (self, tool, pickDrop):
+		pd = ['dropped', 'picked'][pickDrop]
+		self._iLog.append((round(viz.tick(),2), self._player, tool, pickDrop))
+		#print "Time %s: player %s %s the %s" % (round(viz.tick(),2), self._player, pd, tool)
+		
+	def LogProximity (self, mach, inOut):
+		self._proxLog.append((round(viz.tick(),2), self._player, mach, inOut))
+		
+	def LogPosition (self):
+		#record player position every 2 seconds
+		if viz.tick() % 1 <= viz.getFrameElapsed():
+			self._pLog.append((round(viz.tick(),2), self._view.getPosition()[0], self._view.getPosition()[2]))
 		
 if __name__ == '__main__':
 

@@ -7,12 +7,12 @@ import vizact
 import vizjoy
 import vizproximity
 from string import upper, lower
-import pickle
 import Factory
 import Interaction
 import Window
 import Avatar
 import StateMachine
+import LogParser
 
 viz.go()
 
@@ -25,7 +25,7 @@ viz.clearcolor(viz.SKYBLUE)
 
 #ADD FACTORY
 olivePress = Factory.Factory()
-MACHINERY = ('lavalL', 'boiler', 'engine', 'millR', 'pumpR', 'pressR', 'loader', 'oilPump')
+MACHINERY = ('lavalL', 'lavalR', 'scale', 'oilPump', 'scale')
 #MACHINERY = ('boiler', 'engine', 'lavalR', 'lavalL', 'millR', 'pressR', 'pumpR', 'loader', 'oilPump')
 #MACHINERY = ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')
 EYEHEIGHT = 1.75
@@ -122,59 +122,6 @@ def startTimer():
 
 vizact.onkeydown(viz.KEY_BACKSPACE, startTimer)
 
-############################
-## PARSE LOGFILE FROM FSM ##
-############################
-
-def parseLogFile ():
-	output = []
-	for m in FSM.keys():
-		log = FSM[m].log		
-		for p,data in log.iteritems():
-			for e in data:	#e[0]-> input, e[1]-> actions, e[2] -> time stamp
-				output.append((e[2], p, getPName(p), e[0], m, e[1]))
-	# sort data according to time stamp			
-	output.sort()
-	saveLogFile(output)
-	
-def saveLogFile(content):
-	file = open('logfile', 'w')
-	pickle.dump(content, file)
-	file.close()
-
-def loadLogFile():
-	file = open('logfile', 'r')
-	log = pickle.load(file)
-	file.close()
-	return log
-	
-def printLogFile(parser):
-	import time
-	data = loadLogFile()
-	# Output log in readable format: i[0]->time, i[1]->player, i[2]->name, i[3]->machine, i[4]->input, i[5]->actions
-	if parser == 'time':
-		data.sort(key=lambda tup: tup[0])
-	elif parser == 'machine':
-		data.sort(key=lambda tup: tup[4])
-	elif parser == 'player':
-		data.sort(key=lambda tup: tup[1])
-	for i in data:
-		if parser == 'time':
-			print "Time Stamp: %s | P%s (%s) performed %s on machine %s and caused actions: %s" %(i[0], i[1], i[2], i[3], i[4], str(i[5]))
-		elif parser == 'machine':
-			print "Machine: %s | At %s player P%s (%s) performed %s and caused actions: %s" %(i[4], i[0], i[1],  i[2], i[3], str(i[5]))
-		elif parser == 'player':
-			print "Player%s: %s | At %s performed %s on machine %s and caused actions: %s" %(i[1],  i[2], i[0], i[3], i[4], str(i[5]))
-	
-def getPName (p):
-	return gPlayers[p]['player']._name.getMessage()
-
-def onExit():
-#	import vizinput
-#	vizinput.message('goodbye')
-	parseLogFile()
-
-viz.callback(viz.EXIT_EVENT, onExit) 
 	
 ##############################
 ## STATES for STATE MACHINE ##
@@ -467,6 +414,14 @@ def getTimerIDCode (id, anL, anR):
 		id = 82
 	return id, code
 	
+
+def onExit():
+#	import vizinput
+#	vizinput.message('goodbye')
+	LogParser.storeLogData(FSM, gPlayers)
+
+viz.callback(viz.EXIT_EVENT, onExit) 
+
 #----------------------------------------------------------------
 def sendEventToMachine (mach, action):
 	(mActions, mMessage) = FSM[mach].evaluate_multi_input(action, gPlayers[1]['player'], True)

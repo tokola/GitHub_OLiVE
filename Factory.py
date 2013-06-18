@@ -139,12 +139,12 @@ class Factory ():
 			self.lavalR = Machinery.Laval(self.factory, [-7.8,0,-5], [180,0,0], 'R', self)
 			self.machines['lavalR'] = self.lavalR
 			signL2 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-					pos=[-7.6,2.3,-6.24], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval2.png'))
+					pos=[-7.6,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval2.png'))
 		if 'lavalL' in args:
 			self.lavalL = Machinery.Laval(self.factory, [-10,0,-5], [180,0,0], 'L', self)
 			self.machines['lavalL'] = self.lavalL
 			signL1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-					pos=[-10.37,2.3,-6.24], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval1.png'))
+					pos=[-10.37,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval1.png'))
 		
 		if 'oilPump' in args:
 			self.oilPump = Machinery.OilPump(self.factory, [-6.02,.25,-6.032], [180,0,0], self)
@@ -323,7 +323,7 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-	machines = ('millL', 'pressR', 'loader', 'lavalL')
+	machines = ('boiler') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
 #	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
 	oliveFactory = Factory()
 	oliveFactory.AddMachinery(machines)
