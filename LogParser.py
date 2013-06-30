@@ -2,14 +2,14 @@
 import vizact
 import pickle
 import fnmatch
-
-viz.go()
+import os
+import datetime
 
 ##############################
 ## STORE AND PARSE LOG DATA ##
 ##############################
 
-def storeLogData (FSM, players):
+def storeLogData (FSM, players, cond, gr):
 	output = []		#user interaction with machinery [(time, user, name, input, machine, actions), ...]
 	output2 = []	#machine state changes [(time, machine, before, trigger, after, actions), ...]
 	output3 = []	#user inventory changes [(time, user, tool, pickOrDrop), (), ...]
@@ -37,26 +37,50 @@ def storeLogData (FSM, players):
 	#sort data according to time stamp			
 	output.sort()
 	output2.sort()
-	saveLogFile('user', output)
-	saveLogFile('state',output2)
-	saveLogFile('inventory', output3)
-	saveLogFile('proximity', output4)
-	saveLogFile('position', output5)
+	saveLogFile('user', output, cond, gr)
+	saveLogFile('state',output2, cond, gr)
+	saveLogFile('inventory', output3, cond, gr)
+	saveLogFile('proximity', output4, cond, gr)
+	saveLogFile('position', output5, cond, gr)
 	
-def saveLogFile(kind, content):
-	file = open('log_'+kind, 'w')
+def saveLogFile(kind, content, condi, group):
+	#stamp = str(datetime.date.today().month)+'.'+str(datetime.date.today().day)
+	folder = 'Trial'+chr(66+condi)+str(group)
+	d = os.path.dirname('./study/'+folder+'/')
+	if not os.path.exists(d):
+		os.makedirs(d)
+	file = open('study/'+folder+'/log_'+kind, 'w')
 	pickle.dump(content, file)
 	file.close()
+	saveLastTrial(chr(66+condi)+str(group))
 
-def loadLogFile(kind):
-	file = open('log_'+kind, 'r')
-	log = pickle.load(file)
+def saveLastTrial(trial):	#store the code of the latest trial
+	file = open('study/last_trial', 'w')
+	pickle.dump(trial, file)
 	file.close()
-	return log
 	
-def printLogFile(parser):
+def getLatestTrial():
+	try:
+		file = open('study/last_trial', 'r')
+		trial = pickle.load(file)
+		file.close()
+		return trial
+	except IOError:
+		return None
+		
+def loadLogFile(kind, trial=getLatestTrial()):
+	folder = 'Trial'+trial
+	try:
+		file = open('study/'+folder+'/log_'+kind, 'r')
+		log = pickle.load(file)
+		file.close()
+		return log
+	except IOError:
+		print "FILE NOT FOUND!"
+		
+def printLogFile(parser, trial=getLatestTrial()):
 	import time
-	data = loadLogFile('user')
+	data = loadLogFile('user', trial)
 	# Output log in readable format: i[0]->time, i[1]->player, i[2]->name, i[3]->machine, i[4]->input, i[5]->actions
 	if parser == 'time':
 		data.sort(key=lambda tup: tup[0])
@@ -75,8 +99,8 @@ def printLogFile(parser):
 def getPName (playerList, p):
 	return playerList[p]['player']._name.getMessage()
 	
-def retrieveScoreProgress():
-	data = loadLogFile('state')
+def retrieveScoreProgress(trial=getLatestTrial()):
+	data = loadLogFile('state', trial)
 	#convert tuples to list and make time a string to allow string search
 	scoreEntries = [d for d in data if fnmatch.filter(d[5], 'score*')!=[]]
 	print scoreEntries
@@ -95,14 +119,12 @@ def setupPathView ():
 	cam = vizcam.PivotNavigate(distance=50)
 	cam.centerNode(flmap)
 
-vizact.onkeydown('s', setupPathView)
-
-def playerAnimationPath (player):
-	data = loadLogFile('position')[player]
-	#Add the ball to animate
-#	avatar = viz.addTexQuad(size=.75)
-#	avatar.setEuler(0,90,0)
-#	avatar.texture(viz.addTexture('textures/mapAva_icon.png'),'',0)
+def playerAnimationPath (player, trial=getLatestTrial()):
+	data = loadLogFile('position', trial)
+	if data == None or not data.has_key(player):
+		return
+	data = data[player]
+	#Add the ball as avatar to animate
 	avatar = viz.addChild('beachball.osgb', scale=[1.5,1.5,1.5])
 	colors = [[197, 106, 183], [83, 171, 224], [255, 189, 0]]
 	avatar.color([float(c)/255 for c in colors[player-1]])
@@ -122,5 +144,10 @@ def playerAnimationPath (player):
 	#Play the animation path
 	path.play()
 
-for p in [1,2,3]:
-	vizact.onkeydown(str(p), playerAnimationPath, p)
+if __name__ == '__main__':
+	
+	viz.go()
+	
+	vizact.onkeydown('p', setupPathView)
+	for p in [1,2,3]:
+		vizact.onkeydown(str(p), playerAnimationPath, p)

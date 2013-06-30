@@ -14,61 +14,64 @@ import Avatar
 import StateMachine
 import LogParser
 
-viz.go()
+viz.go(viz.FULLSCREEN)
 
 viz.phys.enable()
 #viz.MainView.setPosition(-10,2,-5)
 #viz.MainView.setEuler(-90,0,0)
 #viz.fov(60)
 #viz.collision(viz.ON)
-viz.clearcolor(viz.SKYBLUE)
+#viz.clearcolor(viz.SKYBLUE)
 
-#ADD FACTORY
-olivePress = Factory.Factory()
-MACHINERY = ('lavalL', 'lavalR', 'scale', 'oilPump', 'scale')
-#MACHINERY = ('boiler', 'engine', 'lavalR', 'lavalL', 'millR', 'pressR', 'pumpR', 'loader', 'oilPump')
-#MACHINERY = ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')
+#DEFINE VARIABLES
+MACHINERY = {0: ('waterPipe'),
+			 #1: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')}
+			 1: ('millL', 'millR', 'lavalL', 'lavalR', 'scale')}
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
 
-### MAKE THE DIFFERENT VIEWS ###
+studyMode = 1	#set True for experiment
 
-gPlayers = {}
+##############################################
+### MAKE THE INTERFACE AND DIFFERENT VIEWS ###
+##############################################
 
-gPlayerData = {1: {'name': 'Takis', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,EYEHEIGHT,0]},
-               2: {'name': 'Anna', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
-               3: {'name': 'Matzourana', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
-
+gPlayers = {}		#dictionaty with player, joystick, and avatar classes
+gPlayerData = {1: {'name': 'Player 1', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,EYEHEIGHT,0]},
+               2: {'name': 'Player 2', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
+               3: {'name': 'Player 3', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
+	
 def splitViews ():
-	global floorMap, playerByView
+	global olivePress, floorMap, playerByView
 
 	# set the four different views in seperate windows (3 players and the map)
 	floorMap = Window.PlayerView(winPos=[0.5,1])
-	p1 = Window.PlayerView(view=viz.MainView, win=viz.MainWindow, winPos=[0,1], player=1, name=gPlayerData[1]['name'], fact=olivePress, sm=FSM, fmap=floorMap)
-	p2 = Window.PlayerView(winPos=[0,.5], player=2, name=gPlayerData[2]['name'], fact=olivePress, sm=FSM, fmap=floorMap)
-	p3 = Window.PlayerView(winPos=[0.5,.5], player=3, name=gPlayerData[3]['name'], fact=olivePress, sm=FSM, fmap=floorMap)
-	# set the initial view positions
-	for i,p in {1:p1,2:p2,3:p3}.iteritems():
-		p._view.setPosition(gPlayerData[i]['pos'])
-#		p._view.collision(viz.ON)
-	# assign the joystick to each player
+	p1 = Window.PlayerView(view=viz.MainView, win=viz.MainWindow, winPos=[0,1], player=1, data=gPlayerData[1], fact=olivePress, sm=FSM, fmap=floorMap)
+	# assign the joystick to player 1
 	j1 = Interaction.Joystick(p1._window, p1, DEVICE)
-	j2 = Interaction.Joystick(p2._window, p2, DEVICE)
-	j3 = Interaction.Joystick(p3._window, p3, DEVICE)
-	# set the avatar for each player
+	# set the avatar for player 1
 	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'], EYEHEIGHT)
-	a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
-	a3 = Avatar.Avatar(p3._view, gPlayerData[3]['colors'], EYEHEIGHT)
-	# make a list of all the players
-	gPlayers[1] = {'player': p1, 'joy': None, 'avatar': a1}
-	gPlayers[2] = {'player': p2, 'joy': j2, 'avatar': a2}
-	gPlayers[3] = {'player': p3, 'joy': j3, 'avatar': a3}
-	playerByView = {}	#dictionary of players by view
-	for p in gPlayers.values():
-		av = p['avatar']
-		playerByView[p['player']._view] = p['player']
-		av._avatar.renderToAllWindowsExcept([p['player']._window, floorMap._window])
-		av._mapAva.renderOnlyToWindows([floorMap._window])
+	players = [[p1, j1, a1]]
+	if condition > 0:	#if more the 3P condition was chosen (condition=1)
+		p2 = Window.PlayerView(winPos=[0,.5], player=2, data=gPlayerData[2], fact=olivePress, sm=FSM, fmap=floorMap)
+		j2 = Interaction.Joystick(p2._window, p2, DEVICE)
+		a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
+		p3 = Window.PlayerView(winPos=[0.5,.5], player=3, data=gPlayerData[3], fact=olivePress, sm=FSM, fmap=floorMap)
+		j3 = Interaction.Joystick(p3._window, p3, DEVICE)
+		a3 = Avatar.Avatar(p3._view, gPlayerData[3]['colors'], EYEHEIGHT)
+		players.append([p2, j2, a2])
+		players.append([p3, j3, a3])
+	# make a list of all the players and set the initial view positions
+	playerByView = {}	#dictionary of players by view {view1: p1, view1:p2, view3:p3}
+	for i,p in enumerate(players):
+		playNum = i+1
+		player, joy, avatar = p[0], p[1], p[2]
+		gPlayers[playNum] = {'player': player, 'joy': joy, 'avatar': avatar}
+		#hide avatars from their window and the map; render map avatar only on map
+		avatar._avatar.renderToAllWindowsExcept([player._window, floorMap._window])
+		avatar._mapAva.renderOnlyToWindows([floorMap._window])
+		playerByView[player._view] = player
+	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
 	
 vizact.onkeydown('v', splitViews)
 
@@ -135,7 +138,7 @@ def loadMachFSM_Xl():
 	STATES = {}
 	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
 	#Get the first sheet in the workbook by index
-	sheet1 = workbook.sheet_by_name('FSM')
+	sheet1 = workbook.sheet_by_name('FSM'+str(trial))
 	r = 0
 	for rowNumber in range(sheet1.nrows):
 		r += 1
@@ -158,7 +161,7 @@ def loadMachFSM_Xl():
 		#set the inputs subdictionary with: input:{next state, output, info}
 		if stateData[3] == '':
 			stateData[3] = None
-		inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=stateData[5].split('; '))
+		inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=stateData[5].split(' $ '))
 		if inputs['output'] == ['']: 
 			del inputs['output'][0]
 		if inputs['info'] == ['']: 
@@ -173,7 +176,7 @@ def loadFactFSM_Xl():
 	FaSTATES = {}
 	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
 	#Get the first sheet in the workbook by index
-	sheet1 = workbook.sheet_by_name('FaSM')
+	sheet1 = workbook.sheet_by_name('FaSM'+str(trial))
 	r = 0
 	for rowNumber in range(sheet1.nrows):
 		r += 1
@@ -190,6 +193,8 @@ def ReloadFSM():
 #	loadFactFSM_Xl()
 #	(actions, message) = SyncFactoryStates ('FACTORY/START')
 #	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
+
+#vizact.onkeydown('r', ReloadFSM)
 
 def MachineState (mach, state, inp, sync=False):
 	global STATES
@@ -307,30 +312,9 @@ def ExitMachine(e, mach):
 	view = e.target.getSourceObject()
 	playerByView[view].LeaveMachine(mach)
 	
-def initialize ():
-	global floorMap
-	
-	loadMachFSM_Xl()
-	loadFactFSM_Xl()
-	
-	olivePress.AddMachinery(MACHINERY)
-	olivePress.AddAllTools()
-	olivePress.AddOtherStuff()
-	
-	splitViews()
-	AddProximitySensors()
-	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
-	
-	(actions, message) = SyncFactoryStates ('FACTORY/START')
-	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
 
-vizact.onkeydown('i', initialize)
-vizact.onkeydown('s', olivePress.StartFactory)	
-#vizact.onkeydown('r', ReloadFSM)
-
-initialize()
-
-
+##############################################
+## TIMER EXPIRATION: DEFINED IN FSM_ACTIONS ##
 		
 def timerExpire(id):
 	print "expiring...", id
@@ -396,9 +380,19 @@ def timerExpire(id):
 		(actions, message) = FSM['oilPump'].evaluate_state(anims[id]+'-filled')
 		
 	# TIMERS FOR SCALE
-	elif id in [801, 802]:	# timer for scale expiration
-		anims = {801: 'pitcher', 802: 'finished'}
+	elif id in [801, 802, 803]:	# timer for scale expiration
+		anims = {801: 'pitcher', 802: 'reminder', 803: 'finished'}
 		(actions, message) = FSM['scale'].evaluate_state('weigh-'+anims[id])
+		
+	# TIMERS FOR WATER PIPE [PRACTICE]
+	elif id in range(1000, 1005):	# timer for scale expiration
+		anims = {1000: 'waitAnim', 1001: 'done', 1002: 'high', 1003: 'max'}
+		(actions, message) = FSM['waterPipe'].evaluate_state('water-'+anims[id])
+		
+	# TIMER FOR EXPIRATION FOR ENABLING PLAYER 1 TO EXECUTE MULTI-INPUT ACTION
+	elif id == 1100:
+		if condition == 0:	#check if 1P condition
+			(actions, message) = ([], '')
 		
 	#tell player 1 to broadcast messages and actions
 	gPlayers[pl]['player'].BroadcastActionsMessages(actions, message)
@@ -416,12 +410,80 @@ def getTimerIDCode (id, anL, anR):
 	
 
 def onExit():
-#	import vizinput
-#	vizinput.message('goodbye')
-	LogParser.storeLogData(FSM, gPlayers)
+	import vizinput
+#	vizinput.message('Thank you for playing the Olive Oil Game!!!')
+	if studyMode and trial:	#log data only for main trial
+		LogParser.storeLogData(FSM, gPlayers, condition, group)
 
 viz.callback(viz.EXIT_EVENT, onExit) 
 
+def initialize ():
+	global olivePress, floorMap, inputPanel, names
+	
+	#remove input panel and store player names
+	try:
+		for p in range(condition*2+1):
+			if names[p].getMessage() != '':
+				gPlayerData[p+1]['name'] = names[p].getMessage()
+		inputPanel.remove()
+	except:
+		pass
+	#add the factory
+	olivePress = Factory.Factory()
+	#load the state machine files
+	loadMachFSM_Xl()
+	loadFactFSM_Xl()
+	#add machinery and other stuff to factory
+	olivePress.AddMachinery(MACHINERY[trial])
+	olivePress.AddAllTools()
+	olivePress.AddOtherStuff()
+	#split the views according to players
+	splitViews()
+	AddProximitySensors()
+	#initiate the factory states
+	(actions, message) = SyncFactoryStates ('FACTORY/START')
+	gPlayers[1]['player'].BroadcastActionsMessages(actions, message)
+
+vizact.onkeydown('i', initialize)
+
+#####################################
+## EXPERIMENT CONDITIONS AND INPUT ##
+#####################################
+
+def displayInputPanel():
+	global inputPanel, names
+	
+	inputPanel = viz.addGUIGroup()
+	names = []
+	pl = range(condition*2+1)
+	pl.reverse()
+	for i,p in enumerate(pl):
+		name = viz.addTextbox()
+		title = viz.addText('Player %s name:'%str(i+1), viz.SCREEN)
+		title.fontSize(24)
+		title.addParent(inputPanel)
+		title.setPosition([.4, .53+.1*p, 0])
+		name.setPosition([.5, .5+.1*p, 0])
+		name.addParent(inputPanel)
+		names.append(name)
+	startB = viz.addButtonLabel('START')
+	startB.setPosition(.5,.4)
+	startB.addParent(inputPanel)
+	vizact.onbuttonup(startB, initialize)
+	
+if studyMode:
+	trial = viz.choose('Choose practice or main trial:',['practice', 'trial'])
+	condition = viz.choose('Choose study condition:',['1P', '3P'])
+	if trial:
+		group = viz.input('Choose group number:', '')
+		displayInputPanel()
+	else:
+		initialize()
+else:
+	condition = 0	#0->'1P', 1->'3P'
+	trial = 1		#1->full factory & logging, 0->practice
+	initialize()
+	
 #----------------------------------------------------------------
 def sendEventToMachine (mach, action):
 	(mActions, mMessage) = FSM[mach].evaluate_multi_input(action, gPlayers[1]['player'], True)

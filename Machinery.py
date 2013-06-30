@@ -144,14 +144,12 @@ class Mill ():
 		self.LR = LR
 		dirs = {'L': 1, 'R': -1}	#direction of rotation according to mill
 		self.direction = dirs[LR]
-		self.wheels = self.object.insertGroupBelow('wheels')
-		self.wL = self.wheels.insertGroupBelow('WheelL')
-		self.wR = self.wheels.insertGroupBelow('WheelR')
 		#get the nodes used for animation
 		self.rotationAxis = self.object.getChild('rotation_axis')
 		self.tankPulp = self.object.getChild('pulp')
 		self.pourPulp = self.object.getChild('pourPulp')
 		self.pourPulp.alpha(0)
+		self._usedSackCounter = 0
 		self.getComponents()
 		#this is called by the AddProximitySensors() of the main module
 		self.proximityData = (vizproximity.CircleArea(3), self.object)
@@ -159,6 +157,12 @@ class Mill ():
 	def getComponents (self):
 		self.components = {}
 		self.componentPos = {}
+		millPos = self.object.getPosition()
+		self.wheels = self.object.getChild('wheels')
+		self.components['wheels'+self.LR] = self.wheels
+		self.wL = self.wheels.getChild('WheelL')
+		self.wR = self.wheels.getChild('WheelR')
+		self.componentPos[self.wheels] = [millPos[0], millPos[1]+1, millPos[2]]
 		# Add the paste
 		self.mixedPulp = self.object.getChild('mixedPulp')
 #		self.mixedPulp.enable(viz.SAMPLE_ALPHA_TO_COVERAGE)
@@ -171,7 +175,6 @@ class Mill ():
 		justPaste.alpha(0)
 		justPaste.visible(0)
 		self.components['paste'+self.LR] = justPaste
-		millPos = self.object.getPosition()
 		self.componentPos[justPaste] = [millPos[0], millPos[1]+1, millPos[2]]
 		# Add the hatch
 		hatch = self.object.getChild('hatch')
@@ -185,7 +188,9 @@ class Mill ():
 		self.componentPos[tank] = [millPos[0]+.373, millPos[1]+1, millPos[2]-1.03]
 		#once the following line is called the tank stops reacting to intersections
 		#self.componentPos[tank] = self.object.getChild('tank-GEODE').getPosition(viz.ABS_GLOBAL)
-		# Add the sacks
+		self.AddSacks()
+	
+	def AddSacks (self):
 		self.sackItem = viz.add('models/objects/sack'+self.LR+'.osgb')
 		#The alpha is being applied as part of the material, but both sacks use the same material. 
 		#Vizard preserves material instancing by default, but you can break the instancing using...
@@ -193,9 +198,15 @@ class Mill ():
 		self.sackItem.alpha(0, 'sack_pouring')
 		self.sackPour = self.sackItem.getChild('sack_pouring')
 		self.sackPour.center(-3.905, 1.504, 8.611)
-		#add sacks to the components and componentPos
-		sack1 = self.sackItem.getChild('sack1'+self.LR)
-		sack2 = self.sackItem.getChild('sack2'+self.LR)
+		sack_path = self.sackItem.getChild('path1'+self.LR)
+		sack_path.setAnimationLoopMode(0)
+		sack_path.setAnimationSpeed(0)
+		sack_path = self.sackItem.getChild('path2'+self.LR)
+		sack_path.setAnimationLoopMode(0)
+		sack_path.setAnimationSpeed(0)
+		#create a new group below 'sack' and adopt its children to keep pivot point
+		sack1 = self.sackItem.insertGroupBelow('sack1'+self.LR)
+		sack2 = self.sackItem.insertGroupBelow('sack2'+self.LR)
 		self.components['sack1'+self.LR] = sack1
 		self.components['sack2'+self.LR] = sack2
 		if self.LR == 'R':
@@ -204,25 +215,18 @@ class Mill ():
 		else:
 			self.componentPos[sack1] = [-26.4, 2, 10.27]
 			self.componentPos[sack2] = [-26.4, 2, 11.43]
-		sack_path = self.sackItem.getChild('path1'+self.LR)
-		sack_path.setAnimationLoopMode(0)
-		sack_path.setAnimationSpeed(0)
-		sack_path = self.sackItem.getChild('path2'+self.LR)
-		sack_path.setAnimationLoopMode(0)
-		sack_path.setAnimationSpeed(0)
 		
 	def SackAnim (self, sid):	#sid is the sack id: {1R, 2R, 1L, or 2L}
+		self._usedSackCounter += 1
 		sack = self.components['sack'+sid]
 		self.sack_path = self.sackItem.getChild('path'+sid).copy()
-		#create a new group below 'sack' and adopt its children to keep pivot point
-		sack = self.sackItem.insertGroupBelow('sack'+sid)
 		sack.setParent(self.sack_path, node='path'+sid)
 		self.sack_path.setAnimationSpeed(1)
 		sack.addAction(vizact.waittime(3))	#wait for sack animation
 		endAnimSignal = vizact.signal()
 		trig = endAnimSignal.trigger
-		fade = vizact.method.alpha(0)
-		sack.addAction(vizact.parallel(fade, trig))
+		hide = vizact.method.visible(0)
+		sack.addAction(vizact.parallel(hide, trig))
 		self.sackPour.addAction(endAnimSignal.wait)	# wait for animation before pouring starts
 		self.sackPour.addAction(vizact.method.alpha(1, node='sack_bent'))
 		self.sackPour.addAction(vizact.spinTo(euler=[0,-45,0], time=.75, interpolate=vizact.easeInStrong))
@@ -238,6 +242,8 @@ class Mill ():
 		move = vizact.moveTo([0, 0, 0], time=5)
 		resize = vizact.sizeTo([1, 1, 1], time=5, interpolate=vizact.easeIn)
 		self.mixedPulp.addAction(vizact.parallel(move, resize))
+		self.sack_path.addAction(loadSignal.wait)
+		self.sack_path.addAction(vizact.method.setAnimationSpeed(-100))	#put sack back
 	
 	def OlivesToPaste (self):
 		justPaste = self.components['paste'+self.LR]
@@ -252,6 +258,11 @@ class Mill ():
 		self.mixedPulp.addAction(vizact.method.setPosition(0,-.35,0))
 		self.mixedPulp.addAction(vizact.method.visible(1))
 		self.mixedPulp.addAction(vizact.method.alpha(1, node='olives'))
+	
+	def ReplenishSacks (self):	#replenish sacks every two that are wasted
+		if not (self._usedSackCounter % 2):
+			self.components['sack1'+self.LR].visible(1)
+			self.components['sack2'+self.LR].visible(1)
 		
 	def PasteInTank (self):
 		hatch = self.components['hatch'+self.LR]
@@ -631,6 +642,7 @@ class Laval ():
 		base.setPosition(pos[0]-.02, pos[1], pos[2]+.05)
 		base.scale(.12,.1,.25)
 		self.belt = self.object.getChild('belt_laval')
+		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
 		self.power_wheel = self.object.getChild('powerW')
 		self.power_wheel.center(-.393, .643, .048)
 #		self.gauge = self.object.getChild('gauge')
@@ -666,7 +678,6 @@ class Laval ():
 			self.componentPos[self.wheel] = [lavalPos[0]+.35, lavalPos[1]+1.25, lavalPos[2]-2.4]
 			self.components['crazyW'] = self.crazy_wheel
 			self.componentPos[self.crazy_wheel] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
-		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
 	
 	def DetachBelt (self):
 		self.belt.visible(0)
@@ -846,7 +857,7 @@ class OilPump ():
 class Boiler ():
 	"""This is the Boiler class"""
 	def __init__(self, factory, pos):
-		self.object = factory.add('models/boiler2.ive')
+		self.object = factory.add('models/boiler.ive')
 		self.hatch = (self.object.insertGroupBelow('HatchDoorL'), self.object.insertGroupBelow('HatchDoorR'))
 		self.gauge = self.object.insertGroupBelow('velona')
 		fire = viz.add('textures/fire.mov', loop=1, play=1)
@@ -978,6 +989,60 @@ class Belt ():
 		self.belt.addAction(vizact.moveTo(newPos, time=2, interpolate=vizact.easeInOut))
 		
 
+class WaterPipe ():
+	"""This is the WaterPipe class used for practice"""
+	def __init__(self, factory, pos, eul):
+		self.object = factory.add('models/waterPipe.ive')
+		self.object.setPosition(pos)
+		self.object.setEuler(eul)
+		self.pipe = self.object.getChild('missingPipe')
+		#this is called by the AddProximitySensors() of the main module
+		self.proximityData = (vizproximity.RectangleArea([2.5,2.5]), self.object)
+		self.getComponents()
+		
+	def getComponents (self):
+		self.components = {}
+		self.componentPos = {}
+		valve = self.object.insertGroupBelow('valve')
+		self.components['valve'] = valve
+		objPos = self.object.getPosition()
+		self.componentPos[valve] = [objPos[0],1.5,objPos[2]]
+		elbow = self.object.getChild('elbow')
+		self.components['elbow'] = elbow
+		objPos = self.object.getPosition()
+		self.componentPos[elbow] = [objPos[0],1,objPos[2]]
+		ferrule = self.object.getChild('ferrule')
+		self.components['ferrule'] = ferrule
+		objPos = self.object.getPosition()
+		self.componentPos[ferrule] = [objPos[0],1,objPos[2]]
+	
+	def DetachPipe (self):
+		self.pipe.visible(0)
+		
+	def AttachPipe (self):
+		self.pipe.addAction(vizact.fadeTo(1, time=1))
+		self.pipe.visible(1)
+	
+	def OpenValve (self, time):
+		self.components['valve'].addAction(vizact.spin(0,0,1,360,time))
+		
+	def CloseValve (self, time):
+		self.components['valve'].addAction(vizact.spin(0,0,1,-360,time))
+	
+	def Damage (self, flag):
+		if flag:
+			self.smoke = self.object.add('models/objects/smoke_trail.osg')
+			self.smoke.setPosition(0,1.5,0)
+			self.smoke.setScale(.25,.25,.25)
+		else:
+			self.smoke.remove()
+			
+	def Start (self):
+		pass
+		
+	def Stop (self):
+		pass
+		
 if __name__ == '__main__':
 	import vizcam
 	
@@ -985,15 +1050,21 @@ if __name__ == '__main__':
 	viz.go()
 	
 	ground = viz.addChild('ground.osgb')
-	engine = Engine(ground, [0.58, 1, 2.97], [-90,0,0])
+	engine = Engine(ground, [0.58, 1, 2.97], [-90,0,0])	#476 drawables
 	vizact.onkeydown('e', engine.Start)
 	vizact.onkeydown('r', engine.Stop)
 	
 	cam = vizcam.PivotNavigate(distance=2)
 	cam.centerNode(engine.piston)
 	
-#	OilPump = OilPump(ground, [0.58, 1, 2.97], [180,0,0], False)
+	pump = Pump(ground, [5, 2, 10], [90,0,0], 'L', None)	#43 drawables
+	press = Press(ground, [5, 1, 2.97], [0,0,0], 'L')	#32 drawables
+	boiler = Boiler(ground, [15, 0, 2.97])	#219 drawables
+	laval = Laval(ground, [10, 0, 2.97], [-90,0,0], 'L' ,None)	#35 drawables
+	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
+	
+	OilPump = OilPump(ground, [0, 1, 10], [180,0,0], False)	#29 drawables
 #	vizact.onkeydown('s', OilPump.SetMotion)
 #	vizact.onkeydown('d', OilPump.EndMotion)
-	
+#	cam = vizcam.PivotNavigate(distance=2)
 #	cam.centerNode(OilPump.rod)

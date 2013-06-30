@@ -21,7 +21,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	PLAYERS = WeakValueDictionary()	#holds all player instances (used by FSM_Actions)
 	sounds = {'score1':viz.addAudio('sounds/score1.wav'), 'score0':viz.addAudio('sounds/score0.wav')}
 	
-	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, name=None, sm=None, fmap=None):
+	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, data=None, sm=None, fmap=None):
 		if view == None:
 			view = viz.addView()
 		self._view = view
@@ -34,10 +34,11 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._window.setView(self._view)
 		self._size = self._window.getSize(viz.WINDOW_ORTHO)
 		self._player = player
-		self._name = name
 		#check if this is a player window
 		if player in [1,2,3]:
 			self.PLAYERS[player] = self	#list of all player instances (used by FSM_Actions)
+			self._name = data['name']
+			self._view.setPosition(data['pos'])
 			self._view.stepSize(0.1)
 			self._view.collisionBuffer(0.25)
 			self._view.getHeadLight().disable()
@@ -61,9 +62,10 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._iLog = []			#for logging picked and dropped tools from inventory
 			self._proxLog = []		#for logging proximity to machines (enter, exit)
 			self._pLog = []			#for logging position data
+			self._collabAction = ''	#stores the collab action in 1P mode
+			self.LoadToolTips()
 			#set an update function to take care of window resizing (priority=0)
 			self._updateFunc = vizact.onupdate(0, self.Update)
-			self.LoadToolTips()
 			#FSM_Actions.FSM_Actions.__init__(self)
 		else:	#this is the map view
 			self._window.clearcolor([.3,.3,.3])
@@ -181,7 +183,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		try:
 			self._total.alignment(viz.ALIGN_RIGHT_BASE)
 		except:
-			row3text = viz.addText('Olive points')
+			row3text = viz.addText('Total points')
 			row3text.font("Segoe UI")
 			row3icon = viz.addTexQuad(size=25, texture=viz.add('textures/total_icon.png'))
 			self._total= viz.addText('000')
@@ -236,10 +238,10 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self.info.messagecolor(100,100,0)
 		self.info.bgcolor(viz.BLACK, 0.8)
 		self.info.bordercolor([100,100,0], .9)
-		pointsI = viz.addTexQuad(texture=viz.add('textures/total_icon.png'))
-		timeI = viz.addTexQuad(texture=viz.add('textures/time_icon.png'))
-		points = self.info.add(viz.TEXQUAD, 'Olive points: %s' % self._total.getMessage(), pointsI)
-		time = self.info.add(viz.TEXQUAD, 'Time taken: %s' % self.ConvertTime(viz.tick()), timeI)
+		points = self.info.add(viz.TEXQUAD, 'Total points: %s' % self._total.getMessage())
+		points.texture(viz.add('textures/total_icon.png'))
+		time = self.info.add(viz.TEXQUAD, 'Time taken: %s' % self.ConvertTime(viz.tick()))
+		time.texture(viz.add('textures/time_icon.png'))
 		self.info.shrink()
 		#hide all other panels
 		self._scorePanel.visible(0)
@@ -406,7 +408,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._name.setScale(1.5,.75,1)
 		self._name.setPosition(3,92,0)
 		self._name.setParent(self._hud)
-		#add the message
+		#add the user feedback message
 		self._message = viz.addText('', viz.ORTHO, self._window)
 		self._message.alignment(viz.ALIGN_LEFT_TOP)
 		self._message.font("Segoe UI")
@@ -416,6 +418,15 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._message.setScale(1.5,.75,1)
 		self._message.setPosition(-80,32,0)
 		self._message.setParent(self._hud)
+		#add the collab icon
+		self._collabTextures = [viz.add('textures/collab0.png'), viz.add('textures/collab1.png')]
+		self._collabIcon = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=150)
+		self._collabIcon.texture(self._collabTextures[0])
+		self._collabIcon.setParent(self._hud)
+		self._collabIcon.drawOrder(20)
+		self._collabIcon.setPosition(0, -65, 10)
+		self._collabIcon.setScale(1,.4,1)
+		self._collabIcon.alpha(0)
 		self.ResizePanel()
 		#add the info panels
 		self.CreateInfoPanels()
@@ -555,8 +566,11 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self.ZoomIcon('can', 1)
 		
 	### SENT FROM THE JOYSTICK CLASS ###
-	def SelectItem(self, prevNext):	#-1 for previous, 1 for next
+	def SelectTool(self, prevNext):	#-1 for previous, 1 for next, or tool name
 		self.ResetPick()
+		if isinstance(prevNext, str):	#this is a tool name, so select it in the toolbox
+			self.ZoomIcon(prevNext, 1)
+			return
 		if self._selected == None:
 			if prevNext == 1:
 				self.ZoomIcon('hand', 1)
@@ -627,6 +641,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 					if self.AddToToolbox(tool):
 						self.LogInventory(tool, 1)
 						self.RemoveFromWorld()
+						return tool	#return tool name to enable immediate tool holding
 						
 				elif self._picking in self._factory.components.values():
 					# get the component name from the object to be picked from the factory components list
@@ -635,8 +650,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 					pressOrRelease = {True:'Interacting with', False:'Releasing'}[press]
 					print "%s %s on %s" %(pressOrRelease, held, comp)
 					self._iMach = self._factory.componentPar[comp]
-					(mActions, mMessage) = self._fsm[self._iMach].evaluate_multi_input(held+'_'+comp, self, self._pressed)
-					self.BroadcastActionsMessages(mActions, mMessage, (held, comp))
+					(mActions, mMessage, mCollab) = self._fsm[self._iMach].evaluate_multi_input(held+'_'+comp+self._collabAction, self, self._pressed)
+					self.BroadcastActionsMessages(mActions, mMessage, (held, comp), mCollab)
 					#sys.exit()	#still goes to except after executing else(?)
 		except AttributeError:
 			pass #print "No object under cursor!"
@@ -674,9 +689,11 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	########################################################
 	## SENDING ACTIONS AND MESSAGES TO FSM_ACTIONS MODULE ##
 	
-	def BroadcastActionsMessages (self, acts, mess, interact=None): #interact is tuple (tool, comp)
+	def BroadcastActionsMessages (self, acts, mess, interact=None, collab=False): #interact is tuple (tool, comp)
 		#execute action sequence (subclass function)	
 		self.execute_actions(acts)
+		if collab:
+			self.DisplayCollabBonus()
 		#this executes when no messages exist and interaction excludes hand_mat picked
 		#because there is a mat pick check with delay (0.1sec) for action 'picking_mat'
 		if mess == [] and interact != None and self._feedback != 'picked':
@@ -705,23 +722,37 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._localTimer.setEnabled(False)
 		except:
 			pass
-		if mes == None:
+		if mes == None:	#no feedback defined for this action
 			if toolComp[0] == 'hand':
-				mes = 'There is nothing you can do with the %s, at this moment' % self.tooltips[toolComp[1]]
+				mes = self.tooltips['hand_use'] % self.tooltips[toolComp[1]]
 			else:
-				mes = 'There is no reason to use the %s on the %s, at this moment' % (self.tooltips[toolComp[0]], self.tooltips[toolComp[1]])
-		elif mes == 'inventory':
-			mes = 'You cannot carry more than three items at a time; drop one of the tools and try again'
-		elif mes == 'noDrop':
-			mes = 'You cannot drop the mat, you need to place it on the tray of a press'
-		elif mes == 'oneOnly':
-			mes = 'You cannot carry more than one loaded mat at a time because it is too heavy'
+				mes = self.tooltips['tool_use'] % (self.tooltips[toolComp[0]], self.tooltips[toolComp[1]])
+		elif len(mes.split(' ')) == 1:	#if only one word is passed
+			mes = self.tooltips[mes]
+		
 		mes = '\n'.join(textwrap.wrap(mes, 18))
 		self._message.message(mes)
 		self._localTimer = vizact.ontimer2(10, 1, self.DismissMessage)
 		
 	def DismissMessage (self):
 		self._message.message('')
+	
+	def DisplayCollabBonus (self):
+		self._collabIcon.endAction()
+		self._collabIcon.alpha(1)
+		self._collabIcon.texture(self._collabTextures[1])
+		self._collabIcon.addAction(vizact.fadeTo(0, begin=1, time=3, interpolate=vizact.easeInCubic))
+		
+	def EnablePlayer1ForMultiInput (self, secInput):
+		if self._player == 1 and len(self.PLAYERS) == 1 and self._collabAction == '':
+			self._collabAction = ', '+secInput	#add second action for 1P conditions
+			self._collabIcon.texture(self._collabTextures[0])
+			self._collabIcon.addAction(vizact.fadeTo(0, begin=1, time=5, interpolate=vizact.easeInCircular))
+			self._collabTimer = vizact.ontimer2(5, 1, self.DisablePlayer1ForMultiInput)
+			print "PLAYER1: Preparing to execute multi-input action!"
+			
+	def DisablePlayer1ForMultiInput (self):
+		self._collabAction = ''
 	
 	def LoadToolTips (self):	#load tool explanations from an external file
 		import xlrd	#load the library for reading Excel files
@@ -733,6 +764,9 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			rowData = sheet1.row_values(rowNumber)
 			self.tooltips[rowData[0]] = rowData[1]
 		#print self.tooltips
+	
+	###########################################
+	### LOGGING USER ACTIONS IN THE FACTORY ###
 	
 	def LogInventory (self, tool, pickDrop):
 		pd = ['dropped', 'picked'][pickDrop]

@@ -85,26 +85,32 @@ class StateMachine ():
 				del self.inputs[player]
 			except KeyError:
 				pass
-			return None, ([], None)
+			return None, ([], None), False
 		# make a trigger from all the players' inputs, e.g. {1:'hand_coal', 2:'hand_hammer'}
 		sortInputs = self.inputs.values()
 		sortInputs.sort()	#inputs should be recorded in alphabetical order in Excel
 		trigInput = ', '.join(sortInputs)
-		
 		(acts, mess) = self.evaluate_state(trigInput)
+		print 'ACTIONS' + str(acts)
+		# notify players of multi-input (collab activity)
+		if ',' in trigInput and acts != []:
+			multi = True
+		else:
+			multi = False
 		# if an action was eventually performed, notify the remaining players
 		if len(self.inputs) > 1 and len(acts) > 0:
 			for p in self.inputs.keys():
-				if p != player:
+				if p != player:	#remove * and broadcast action to remaining players
 					actions = self.filterMultiActions(acts)
-					p.BroadcastActionsMessages(actions, mess)
+					p.BroadcastActionsMessages(actions, mess, collab=multi)
 		# log the input of the player and the action performed
-		self.log_user_data(self.inputs, acts)	
+		self.log_user_data(self.inputs, acts)
 		# finally, return the actions,messages to the current player (last input)
-		return (acts, mess)
+		return (acts, mess, multi)
 	
 	def filterMultiActions(self, act):
 		#actions with * at the end will be broadcast to all players involved in the action
+		#but subsequent players (besides the first) will get the action without the star
 		acti = [a.split('*')[0] for a in act if '*' in a]
 		if len(acti) > 0:
 			return acti

@@ -71,11 +71,11 @@ class FSM_Actions ():
 				
 			########## MILL ACTIONS ##############
 			elif 'loading_mill' in action:	#has * at the end
-				if not '*' in action:	#don't let the second player execute the animation again
-					LR = action[-1:]
+				if '*' in action:	#don't let the second player (no *) execute the animation again
+					LR = action[-2:-1]
 					viz.starttimer(ord(LR), 5, 0)	#timer while loading the olives -> anim-finished
 					mill = 'mill'+ LR
-					sackID = action[-2:]
+					sackID = action[-3:-1]
 					exec('self._factory.'+mill+'.SackAnim(\"'+sackID+'\")')
 			elif 'starting_crash' in action:
 				LR = action[-1:]
@@ -93,8 +93,8 @@ class FSM_Actions ():
 				exec('self._factory.'+mill+'.Damage(True)')
 				exec('self._factory.'+mill+'.WastePaste()')
 			elif 'transferring_tank' in action:
-				if not '*' in action:	#don't let the second player execute the animation again
-					LR = action[-1:]
+				if '*' in action:	#don't let the second player (no *) execute the action again
+					LR = action[-2:-1]
 					mill = 'mill'+ LR
 					viz.starttimer(ord(LR), 10, 0)	#timer while transferring the tank -> anim-finshed
 					exec('self._factory.'+mill+'.MoveTank()')
@@ -102,6 +102,10 @@ class FSM_Actions ():
 				LR = action[-1:]
 				mill = 'mill'+ LR
 				viz.starttimer(ord(LR), 4, 0)	#timer while big tank fills up -> anim-finshed
+			elif 'replenishing_sacks' in action:
+				LR = action[-1:]
+				mill = 'mill'+ LR
+				exec('self._factory.'+mill+'.ReplenishSacks()')
 			elif 'resetting_mill' in action:
 				LR = action[-1:]
 				mill = 'mill'+ LR
@@ -128,10 +132,10 @@ class FSM_Actions ():
 			elif action == 'scooping_pulp':
 				self._CanFull(True)	# sent to player holding can
 			elif 'filling_mat' in action:
-				if not '*' in action:	#don't let the second player execute the action again
+				if '*' in action:	#don't let the second player (no *) execute the action again
 					self._factory.loader.FillMat()
 				if self._selected == 'canful':	#the one holding the can should...
-					self._CanFull(False)	#fill up the can
+					self._CanFull(False)	#empty the can being held
 			elif action == 'picking_mat':
 				if self.AddToToolbox('mat'):	#prevents picking the mat when inventory full
 					viz.starttimer(200+self._player, .1, 0)	#send mat-picked event from this player
@@ -148,7 +152,7 @@ class FSM_Actions ():
 				matsLoaded = eval('self._factory.'+press+'.LoadMat()')
 				matsFull = delay[0]	#delay->number of mats to load before full
 				if matsLoaded == matsFull:
-					viz.starttimer(ord(LR)+501, 1, 0)	#timer for filling up press	
+					viz.starttimer(ord(LR)+501, 2, 0)	#timer for filling up press	
 			elif action == 'dropping_mat':
 				self.DropObject(putBack=False, matOnTray=True)
 			elif 'fillingup_press' in action:
@@ -265,7 +269,7 @@ class FSM_Actions ():
 			elif action == 'detaching_laval_belt':
 				self._factory.lavalR.DetachBelt()
 			elif 'attaching_belt' in action:	#has * at the end
-				if not '*' in action:	#execute the action only the first time
+				if '*' in action:	#execute the action only the first time (second no *)
 					print "ATTACHING BELTTTTTTTTTTT by", self._name.getMessage()
 					self._factory.lavalR.AttachBelt()
 				if self._selected == 'belt':#the one holding the belt should...	
@@ -287,8 +291,8 @@ class FSM_Actions ():
 				laval = 'laval'+ LR
 				exec('self._factory.'+laval+'.StartSeparation(0)')
 			elif 'transferring_pitcher' in action:
-				if not '*' in action:	#don't let the second player execute the animation again
-					LR = action[-1:]
+				if '*' in action:	#don't let the second player execute the animation again
+					LR = action[-2:-1]
 					laval = 'laval'+ LR
 					viz.starttimer(400+ord(LR), 7, 0)	#timer while transferring the pitcher -> anim-finshed
 					exec('self._factory.'+laval+'.MovePitcher('+str(delay[0])+')')
@@ -313,13 +317,45 @@ class FSM_Actions ():
 			######## SCALE ACTIONS ###############
 			elif action == 'pitcher_on_scale':	#called from the lavals
 				viz.starttimer(801, 1, 0)
-			elif action == 'weighing_pitcher':	#increase counter by delay[1] lbs
+			elif action == 'weighing_pitcher':	#increase counter by delay[1] lbs in delay[0] secs
 				self._factory.scale.WeighPitcher(delay[0], delay[1])
-			elif action == 'finishing_production':
+			elif 'timerS' in action:
 				viz.starttimer(802, delay[0], 0)
+			elif action == 'finishing_production':
+				viz.starttimer(803, delay[0], 0)
 			elif action == 'finishing_game':
 				self._mapWin.GameFinish(delay[0])
 			
+			####### WATER PIPE ACTIONS [PRACTICE] ######
+			elif 'detaching_pipe' in action:
+				self._factory.waterPipe.DetachPipe()
+			elif 'attaching_pipe' in action:
+				if '*' in action:
+					self._factory.waterPipe.AttachPipe()
+			elif action == 'opening_valve':
+				self._factory.waterPipe.OpenValve(2)
+			elif action == 'closing_valve':
+				self._factory.waterPipe.CloseValve(2)
+				viz.starttimer(1000, 5, 0)
+			elif action == 'damaging_pipe':
+				viz.starttimer(1000, delay[0], 0)
+				self._factory.waterPipe.Damage(True)
+			elif 'timerW' in action:
+				timerTag = action.partition('_')[2]
+				timerCode = action.partition('_')[0][-1:]	#1=set timer, 0=kill timer
+				#e.g., (401,10) -> set timer id=477 (76+401) or id=484 (82+402) for 10 secs
+				#10, 30, 30 secs should be also set in the laval's ChangePressure function 
+				timers = {'done':1001, 'high':1002, 'max':1003}
+				if int(timerCode) == 1:
+					viz.starttimer(timers[timerTag], delay[0], 0)
+				else:
+					viz.killtimer(timers[timerTag])
+			
+			# CHECK IF IN 1P CONDITION AND REMOVE SECOND PLAYER DEMAND
+			elif 'enable1P' in action:
+				otherAct = action.partition('_')[2]
+				self.EnablePlayer1ForMultiInput(otherAct)
+				
 			# REMOVING SMOKE FROM MACHINERY
 			elif 'removing_smoke' in action:
 				mach = action.rpartition('_')[2]
@@ -345,7 +381,7 @@ class FSM_Actions ():
 				self._mapWin.IncreaseOilTotal(delay[0], delay[1])
 				
 	def parse_action (self, act):
-		if act[-1:] == '*':	#keep the asterisk if inside the action
+		if act[-1:] == '*':	#keep the asterisk if inside the action name
 			asterisk = '*'
 		else:
 			asterisk = ''

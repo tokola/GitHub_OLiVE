@@ -17,10 +17,11 @@ class Factory ():
 	def __init__ (self):
 		self.factory = viz.add('models/factory.osgb')
 		# list of tools with position, orientation data and boolean for physics enabled or not
-		self.toolsData = {'wrench': [[16.75,1.5,5],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
+		self.toolsData = {'wrench': [[16.75,1.5,4.8],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
 				          'hammer': [[16.75,1.5,4],[45,0,0], True], 'match':[[16.75,1.5,6.1],[45,0,0],True],
 						  'belt':   [[13.38,1.56,7.7],[0,90,0],False], 'water': [[-2,0,5],[0,-90,0],True],
-						  'can':    [[-15.5,1.1,1.65], [90,0,0], False], 'cart': [[12,.2,1], [90,-45,0], False]}
+						  'can':    [[-15.5,1.1,1.65], [90,0,0], False], 'cart': [[12,.2,1], [90,-45,0], False],
+						  'pipe':	[[16.5,1.5,3.4], [105,0,0], True], 'wrenchP': [[16.6,1.5,5.5], [45,0,0], True]}
 		self.itemsData = {'sack1R': [[-1.5,1.5,10], [90,0,0]], 'sack2R': [[-1.5,1.5,11.2], [90,0,0]]}
 		self.machines = {}		#e.g. {'engine': <engine obj>, 'lavalL:<lavalL obj>}
 		self.wheels = {}		#e.g. {'millR': [<mill wheel1>, <mill wheel2>]
@@ -158,6 +159,11 @@ class Factory ():
 		if 'scale' in args:
 			self.scale = Machinery.Scale(self.factory, [-3.02,0,-6.5], [180,0,0])
 			self.machines['scale'] = self.scale
+			
+		if 'waterPipe' in args:
+			self.waterPipe = Machinery.WaterPipe(self.factory, [11.8,-1,-8], [180,0,0])
+			self.machines['waterPipe'] = self.waterPipe
+			
 		# wheels and belts for the laval sub-system
 		wheel_lavalUp = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
 		wheel_lavalUp.setPosition(-5, 5.77, -7.143)
@@ -166,7 +172,7 @@ class Factory ():
 		wheel_lavalDn.setScale(.75,.75,.75)
 		belt_laval = viz.add('models/objects/belt_laval.osgb', parent=self.factory, cache=viz.CACHE_CLONE)
 		belt_laval.setPosition(-4.95, 1.251, -7.38)
-		self.wheels['laval'] = [wheel_lavalUp, wheel_lavalDn]
+		self.wheels['lavalR'] = [wheel_lavalUp, wheel_lavalDn]
 		self.belts['laval']  = Machinery.Belt(belt_laval)
 				
 		#get all components from machines and store them in factory.components
@@ -189,12 +195,12 @@ class Factory ():
 #		self.tanks.setPosition([-8.75,0,-7.2])
 #		self.tanks.setScale(1.2, 1.2, 1.2)
 		#Decorate self.factory
-		table = self.factory.add('models/objects/table.ive')
-		table.setPosition(-12,0,9.8)
-		table.setScale(.1,.1,.1)
-		table2 = self.factory.add('models/objects/table.ive')
-		table2.setPosition(-16,0,9.8)
-		table2.setScale(.1,.1,.1)
+#		table = self.factory.add('models/objects/table.ive')
+#		table.setPosition(-12,0,9.8)
+#		table.setScale(.1,.1,.1)
+#		table2 = self.factory.add('models/objects/table.ive')
+#		table2.setPosition(-16,0,9.8)
+#		table2.setScale(.1,.1,.1)
 		boxes=self.factory.add('models/objects/boxes.ive')
 		boxes.setScale(.1,.1,.1)
 		boxes.setPosition(-10,0,6)
@@ -278,7 +284,7 @@ class Factory ():
 		for m, machine in self.machines.iteritems():
 			machine.Start()
 			#animate machinery wheels
-			if  self.wheels.has_key(m):	#check if this machine has wheels
+			if self.wheels.has_key(m):	#check if this machine has wheels
 				for w in self.wheels[m]:
 					rev = 1
 					#reverse the gear & wheel rotation for the left mill
@@ -323,7 +329,7 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-	machines = ('boiler') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
+	machines = ('boiler', 'engine', 'pipe', 'lavalR', 'millR') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
 #	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
 	oliveFactory = Factory()
 	oliveFactory.AddMachinery(machines)

@@ -143,7 +143,9 @@ class Joystick(viz.EventClass):
             if e.button in self.actions['next']:
                 self.SelectTool(1)
             if e.button in self.actions['pick']:
-                self.player.PickObject(True)
+                picked = self.player.PickObject(True)
+                if isinstance(picked, str): #if tool name returned
+                    self.SelectTool(picked)
             if e.button == self.actions['drop']:
                 self.player.DropObject()
             if e.button == self.actions['hud']:
@@ -190,8 +192,8 @@ class Joystick(viz.EventClass):
                 self.moveCursor = False
     
     #gets a link of the held tool to the center of the viewpoint
-    def SelectTool(self, prevNext):
-        self.player.SelectItem(prevNext)
+    def SelectTool(self, prevNextTool): #prevNextTool=1,-1 or tool name
+        self.player.SelectTool(prevNextTool)
         toolLink = self.player.HoldObject()
         if toolLink != False:
             self.toolActive = toolLink
