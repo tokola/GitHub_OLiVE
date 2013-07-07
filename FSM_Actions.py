@@ -140,6 +140,8 @@ class FSM_Actions ():
 				if self.AddToToolbox('mat'):	#prevents picking the mat when inventory full
 					viz.starttimer(200+self._player, .1, 0)	#send mat-picked event from this player
 					self._feedback = 'picked'	#avoids displaying the 'undefined' message
+					self.SelectTool('mat')		#select the mat from the toolbox
+					self.HoldObject('mat')		#sets the mat as the holding object (cursor)
 					self._factory.loader.PickMat()
 			elif action == 'mat_as_tool':
 				matObj = self._factory.loader.components['mat']

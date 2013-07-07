@@ -5,6 +5,13 @@ import fnmatch
 import os
 import datetime
 
+def sgetGameLoadingTime (set):
+	global timeOffset
+	if set:
+		timeOffset = viz.tick()
+	else:
+		return timeOffset
+		
 ##############################
 ## STORE AND PARSE LOG DATA ##
 ##############################

@@ -5,6 +5,8 @@ import vizproximity
 
 viz.go()
 
+SOUNDS_ENABLED = 0
+
 class Pump():
 	"""This is the Pump class"""
 	def __init__(self, factory, pos, eul, LR, faClass):
@@ -77,7 +79,7 @@ class Pump():
 		self.barRod.addAction(vizact.moveTo([0,40*flag,0], time=5, interpolate=vizact.easeOut))
 		
 	def StartCrazy (self):
-		self.crazy.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
+		self.crazy.addAction(vizact.spin(0,0,1, 90,viz.FOREVER))
 		
 	def StopCrazy (self):
 		self.crazy.endAction()
@@ -94,7 +96,7 @@ class Pump():
 		self.pistonL.setEuler(0,0,0)
 		self.pistonR.setEuler(0,0,0)
 		#self.wheel.setEuler(0,0,0)
-		self.gear.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
+		self.gear.addAction(vizact.spin(0,0,1, 90,viz.FOREVER))
 		self.shaft.addAction(vizact.spin(0,0,1,-36,viz.FOREVER))
 		#set the left rod's action (rotation and transform)
 		moveRodUp = vizact.moveTo([13.245,-130,738.167], time=5)
@@ -142,11 +144,13 @@ class Mill ():
 		self.object.setPosition(pos)
 		self.object.setEuler(eul)
 		self.LR = LR
+		self.factory = factory
 		dirs = {'L': 1, 'R': -1}	#direction of rotation according to mill
 		self.direction = dirs[LR]
 		#get the nodes used for animation
 		self.rotationAxis = self.object.getChild('rotation_axis')
 		self.tankPulp = self.object.getChild('pulp')
+		self.tankPulp.pick_parent = True	#used in the Player.CheckPickObject() function
 		self.pourPulp = self.object.getChild('pourPulp')
 		self.pourPulp.alpha(0)
 		self._usedSackCounter = 0
@@ -161,7 +165,9 @@ class Mill ():
 		self.wheels = self.object.getChild('wheels')
 		self.components['wheels'+self.LR] = self.wheels
 		self.wL = self.wheels.getChild('WheelL')
+		self.wL.pick_parent = True	#used in the Player.CheckPickObject() function
 		self.wR = self.wheels.getChild('WheelR')
+		self.wR.pick_parent = True	#used in the Player.CheckPickObject() function
 		self.componentPos[self.wheels] = [millPos[0], millPos[1]+1, millPos[2]]
 		# Add the paste
 		self.mixedPulp = self.object.getChild('mixedPulp')
@@ -288,10 +294,10 @@ class Mill ():
 		#change tank and cart animation depending on mill
 		if self.LR == 'L':
 			offset = .50
-			self.cart = viz.add('models/objects/cart.osgb', pos = [-23.835,0,3.97])
+			self.cart = self.factory.add('models/objects/cart.osgb', pos = [-23.835,0,3.97])
 		else:
 			offset = 0
-			self.cart = viz.add('models/objects/cart.osgb', pos = [-5.2166,0,4.448])
+			self.cart = self.factory.add('models/objects/cart.osgb', pos = [-5.2166,0,4.448])
 		self.cart.setEuler(360*offset,0,0)	#millL: rotate 180 deg
 		cTank = self.cart.insertGroupBelow('tank')
 		cTank.visible(0)
@@ -308,6 +314,7 @@ class Mill ():
 		cTank.addAction(waitLoad.wait)
 		cTank.addAction(vizact.method.visible(1))
 		self.cart.addAction(waitLoad.wait)
+		self.cart.addAction(vizact.call(self.PlayAudio, 'cart_roll', self.cart, viz.PLAY))
 		self.cart.addAction(vizact.spinTo(euler=[-20+440*offset,0,0], time=.5))	#millL: rotate to 200 deg
 		moveCart = vizact.moveTo([-14.65-4.9*offset, 0, .75], time=3, interpolate=vizact.easeInOut)
 		rotateCart = vizact.spinTo(euler=[0+360*offset,0,0], time=3)	#millL: rotate to 180 deg
@@ -347,17 +354,37 @@ class Mill ():
 			self.smoke.remove()
 			
 	def Start (self):
+		self.PlayAudio('mill_grind')
 		self.rotationAxis.addAction(vizact.spin(0,1,0,35*self.direction,viz.FOREVER))
 		self.wheels.addAction(vizact.spin(0,1,0,35*self.direction,viz.FOREVER))
 		self.wL.addAction(vizact.spin(1,0,0,35*self.direction,viz.FOREVER))
 		self.wR.addAction(vizact.spin(1,0,0,35*(-self.direction),viz.FOREVER))
 		
 	def Stop (self):
+		self.AdjustAudio(0)
 		self.rotationAxis.endAction()
 		self.wheels.endAction()
 		self.wL.endAction()
 		self.wR.endAction()
-
+	
+	def PlayAudio (self, audio, obj=None, mode=viz.LOOP):
+		if not SOUNDS_ENABLED:
+			return
+		if obj == None:
+			obj = self.object
+		sound = obj.playsound('sounds/'+audio+'.wav', mode)
+		sound.minmax(5,40)
+		if mode == viz.LOOP: #constant machine loop
+			self.sound = sound
+	
+	def AdjustAudio (self, mode): #0-1->volume value, 0->stop
+		if not SOUNDS_ENABLED:
+			return
+		if mode>0:
+			self.sound.volume(mode)
+		else:
+			self.sound.stop()
+			
 		
 class Engine ():
 	"""This is the Engine class"""
@@ -381,9 +408,10 @@ class Engine ():
 
 	#Get the engine working
 	def Start (self):
-		self.engine_system.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
-		self.watt.addAction(vizact.spin(0,0,1, 76, viz.FOREVER))
-		self.spool.addAction(vizact.spin(0,1,0, 76, viz.FOREVER))
+		self.PlayAudio('steam_engine')
+		self.engine_system.addAction(vizact.spin(0,0,1, 90,viz.FOREVER))
+		self.watt.addAction(vizact.spin(0,0,1, 90, viz.FOREVER))
+		self.spool.addAction(vizact.spin(0,1,0, 90, viz.FOREVER))
 		try:
 			self.capPrevZPos = self.cap.getPosition(viz.ABS_GLOBAL)[2]
 			self._updateFunc.setEnabled(viz.ON)
@@ -410,6 +438,7 @@ class Engine ():
 #			print "cap right most: ", self.cap.getPosition(viz.ABS_GLOBAL)[2], self.piston.getPosition()[0]	
 	
 	def Stop (self):
+		self.AdjustAudio(0)
 		self.engine_system.endAction()
 		self.spool.endAction()
 		self.watt.endAction()
@@ -419,6 +448,8 @@ class Engine ():
 		self.components = {}
 		self.componentPos = {}
 		valve = self.object.insertGroupBelow('valve')
+		valveBox = valve.add('box.wrl',alpha=0,scale=valve.getBoundingBox().size)
+		valveBox.pick_parent = True
 		self.components['valve'] = valve
 		self.componentPos[valve] = [1.563+.58, .6+.475, 2.97-2.76]
 		
@@ -427,6 +458,25 @@ class Engine ():
 		
 	def E_closeValve (self, time):
 		self.components['valve'].addAction(vizact.spin(0,1,0,-360,time))
+		
+	def PlayAudio (self, audio, obj=None, mode=viz.LOOP):
+		if not SOUNDS_ENABLED:
+			return
+		if obj == None:
+			obj = self.object
+		sound = obj.playsound('sounds/'+audio+'.wav', mode)
+		sound.minmax(3,30)
+		if mode == viz.LOOP: #constant machine loop
+			self.sound = sound
+	
+	def AdjustAudio (self, mode): #0-1->volume value, 0->stop
+		if not SOUNDS_ENABLED:
+			return
+		if mode>0:
+			self.sound.volume(mode)
+		else:
+			self.sound.stop()
+			
 		
 class Press ():
 	"""This is the Press class"""
@@ -471,13 +521,14 @@ class Press ():
 		self.componentPos[pressTray] = [pos[0], pos[1]+1.5, pos[2]]
 	
 	def LoadMat (self):
-		mat = self.mat.copy()
-		mat.setParent(self.object)
+		self.mat2 = self.mat.copy()
+		self.mat2.setParent(self.components['tray'+self.LR])
+		self.mat2.pick_parent = True		#used in the Player.CheckPickObject() function
 		counter = len(self.loadedMats)
-		self.loadedMats.append(mat)
-		mat.setPosition(0, .05*counter, 0)
-		mat.addAction(vizact.method.visible(1))
-		mat.addAction(vizact.fadeTo(1, begin=0, time=.5))
+		self.loadedMats.append(self.mat2)
+		self.mat2.setPosition(0, .24+.01*counter, .01, viz.ABS_PARENT)
+		self.mat2.addAction(vizact.method.visible(1))
+		self.mat2.addAction(vizact.fadeTo(1, begin=0, time=.5))
 		counter += 1
 		return counter
 			
@@ -497,21 +548,21 @@ class Press ():
 		
 	def Pressing (self):
 		# start moving the piston upwards (not sure why it's working with Z value)
-		self.piston.addAction(vizact.moveTo([0,0,.25], time=60, interpolate=vizact.easeOutCubic))
-		self.mats.addAction(vizact.waittime(10))	# start straining after 10 secs
-		reachTop = vizact.signal()	# signal when mats have reached the top
+		self.piston.addAction(vizact.moveTo([0,1.2,0], time=60, interpolate=vizact.easeOutCubic))
 		stopStrain=vizact.signal()	# signal when the straining finished (60 secs)
-		self.mats.addAction(reachTop.trigger)
-		self.mats.addAction(vizact.sizeTo([1,1,.62], time=50, interpolate=vizact.easeOutCubic))
+#		self.mats.addAction(startSqueeze.trigger)
+		self.mats.addAction(vizact.sizeTo([1,.5,1], time=60, interpolate=vizact.easeOutCubic))
 		self.mats.addAction(stopStrain.trigger)
-		# oil straining starts when mats reach the top and stops 3'' after strain is over
-		self.oilStrain.addAction(reachTop.wait)
+		# oil straining starts 2'' after squeezing starts and stops 3'' after squeezing stops
+		self.oilStrain.addAction(vizact.waittime(2))	# start straining after 2 secs
+		startSqueeze = vizact.signal()	# signal when straining starts
+		self.oilStrain.addAction(startSqueeze.trigger)
 		self.oilStrain.addAction(vizact.method.visible(1))
 		self.oilStrain.addAction(vizact.fadeTo(1, begin=0, time=1))
 		self.oilStrain.addAction(stopStrain.wait)
 		self.oilStrain.addAction(vizact.fadeTo(0, time=3))
 		# oil gathering starts when mats reach the top and finishes 5'' after strain is over
-		self.oilGathered.addAction(reachTop.wait)
+		self.oilGathered.addAction(startSqueeze.wait)
 		self.oilGathered.addAction(vizact.method.visible(1))
 		self.oilGathered.addAction(vizact.fadeTo(1, begin=0, time=5))
 		startDrop = vizact.signal()	# signal when the drop should start (5'' after oil gathered)
@@ -534,6 +585,7 @@ class Press ():
 	
 	def Releasing (self, dur):
 		self.piston.addAction(vizact.moveTo([0,0,0], time=dur, interpolate=vizact.easeOut))
+		self.mats.addAction(vizact.sizeTo([1,.75,1], time=dur, interpolate=vizact.easeOutCubic))
 	
 	def Damage (self, flag):
 		if flag:
@@ -564,7 +616,7 @@ class Loader ():
 		self.object.getChild('can').remove()
 		self.PulpLevel = 0
 		#this is called by the AddProximitySensors() of the main module
-		self.proximityData = (vizproximity.RectangleArea([4,3.5]), self.object.insertGroupBelow('Table'))
+		self.proximityData = (vizproximity.RectangleArea([5,5]), self.object)
 		self.getComponents()
 		
 	def getComponents (self):
@@ -572,34 +624,33 @@ class Loader ():
 		self.componentPos = {}
 		mat = self.object.getChild('mat')
 		mat.hint(viz.COPY_SHARED_MATERIAL_HINT)
-		mat.getChild('Paste').visible(0)
-		mat.getChild('Paste').alpha(0)
-		mat.getChild('FlatPaste').visible(0)
+		self.paste1 = mat.getChild('Paste')
+		self.paste1.pick_parent = True	#when picked highlight its parent instead of object
+		self.paste1.visible(0)
+		self.paste1.alpha(0)
+		self.paste2 = mat.getChild('FlatPaste')
+		self.paste2.pick_parent = True
+		self.paste2.visible(0)
 		self.components['mat'] = mat
 		mat.visible(0)
-		pos = mat.getPosition(viz.ABS_GLOBAL)
-		self.componentPos[mat] = [pos[0]-1.952, pos[1]+1.159, pos[2]-2.62]
-		tankPaste = self.object.getChild('pasteSurface')
-		tankPaste.center(1.777,.123,4.198)
+		pos = self.object.getPosition(viz.ABS_GLOBAL)
+		self.componentPos[mat] = [pos[0]+.523, pos[1]+1.159, pos[2]+.49]
+		tankPaste = self.object.insertGroupBelow('pasteSurface')
 		self.components['pulp'] = tankPaste
-		self.componentPos[tankPaste] = [pos[0]-1.777, pos[1]+.123, pos[2]-4.198]
+		self.componentPos[tankPaste] = [pos[0]+.698, pos[1]+.123, pos[2]-1.087]
 		matPile = self.object.getChild('EmptyMats')
 		self.components['matPile'] = matPile
-		self.componentPos[matPile] = [pos[0]-3.539, pos[1]+.159, pos[2]-2.575]
+		self.componentPos[matPile] = [pos[0]-1.064, pos[1]+1, pos[2]+.484]
 	
 	def FillMat (self):
-		mat = self.components['mat']
-		matPaste = mat.getChild('Paste')
-		matFlatPaste = mat.getChild('FlatPaste')
-		matFlatPaste.setPosition(0,-.02,0)
-		matPaste.setPosition(0,0,0)
-		matPaste.addAction(vizact.method.visible(1))
-		matPaste.addAction(vizact.fadeTo(1, time=.5))
-		matPaste.addAction(vizact.moveTo([0,-.1,0], time=2))
-		matFlatPaste.addAction(vizact.waittime(1))
-		matFlatPaste.addAction(vizact.method.visible(1))
-		matFlatPaste.addAction(vizact.moveTo([0,0,0], time=2))
-#		matFlatPaste.addAction(vizact.call(self.faClass.AddMatAsTool, 'mat', mat))
+		self.paste1.setPosition(0,0,0)
+		self.paste2.setPosition(0,-.02,0)
+		self.paste1.addAction(vizact.method.visible(1))
+		self.paste1.addAction(vizact.fadeTo(1, time=.5))
+		self.paste1.addAction(vizact.moveTo([0,-.1,0], time=2))
+		self.paste2.addAction(vizact.waittime(1))
+		self.paste2.addAction(vizact.method.visible(1))
+		self.paste2.addAction(vizact.moveTo([0,0,0], time=2))
 	
 	def MatOnTable (self):
 		mat = self.components['mat']
@@ -618,9 +669,9 @@ class Loader ():
 	
 	def PickMat(self):
 		mat = self.components['mat']
-		mat.getChild('Paste').visible(0)
-		mat.getChild('Paste').alpha(0)
-		mat.getChild('FlatPaste').visible(0)
+		self.paste1.visible(0)
+		self.paste1.alpha(0)
+		self.paste2.visible(0)
 		mat.visible(0)
 		mat.setPosition([0,0,0], viz.REL_PARENT)
 		
@@ -729,6 +780,11 @@ class Laval ():
 			self.smoke.remove()
 			
 	def ChangeGuide (self, dir):	#dir=1 -> move right, -1 -> move left
+		if dir > 0:
+			self.PlayAudio('laval_start', self.object, viz.PLAY)
+		else:
+			self.AdjustAudio(0)
+			self.PlayAudio('laval_stop', self.object, viz.PLAY)
 		guide = self.components['handle'+self.LR]
 		pos = guide.getPosition()
 		newPos = [pos[0]+.25*dir, pos[1], pos[2]]
@@ -742,25 +798,45 @@ class Laval ():
 			guide.addAction(vizact.call(self.EndMotion))
 			
 	def StartCrazy (self):
-		self.crazy_wheel.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		self.crazy_wheel.addAction(vizact.spin(1,0,0, 90,viz.FOREVER))
 		
 	def StopCrazy (self):
 		self.crazy_wheel.endAction()
 		
 	def SetMotion (self):
-		self.power_wheel.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		self.power_wheel.addAction(vizact.call(self.PlayAudio, 'laval_separate'))
+		self.power_wheel.addAction(vizact.spin(1,0,0, 90,viz.FOREVER))
 		
 	def EndMotion (self):
 		self.power_wheel.endAction()
 		
 	def Start (self):
 		self.StartCrazy()
-		self.wheel.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		self.wheel.addAction(vizact.spin(1,0,0, 90,viz.FOREVER))
 		
 	def Stop (self):
 		self.StopCrazy()
 		self.EndMotion()
 		self.wheel.endAction()
+		
+	def PlayAudio (self, audio, obj=None, mode=viz.LOOP):
+		if not SOUNDS_ENABLED:
+			return
+		if obj == None:
+			obj = self.object
+		sound = obj.playsound('sounds/'+audio+'.wav', mode)
+		sound.minmax(5,30)
+		if mode == viz.LOOP: #constant machine loop
+			self.sound = sound
+	
+	def AdjustAudio (self, mode): #0-1->volume value, 0->stop
+		if not SOUNDS_ENABLED:
+			return
+		if mode>0:
+			self.sound.volume(mode)
+		else:
+			self.sound.stop()
+			
 		
 class OilPump ():
 	"""This is the Oil Pump class"""
@@ -813,15 +889,16 @@ class OilPump ():
 #		if not flag: self.oilDrop.visible(0)
 		
 	def StartCrazy (self):
-		self.wheelC.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		self.wheelC.addAction(vizact.spin(1,0,0, 90,viz.FOREVER))
 		
 	def StopCrazy (self):
 		self.wheelC.endAction()
 		
 	def SetMotion (self):
-		self.wheelP.addAction(vizact.spin(1,0,0, 76,viz.FOREVER))
+		self.PlayAudio('pump_oil')
+		self.wheelP.addAction(vizact.spin(1,0,0, 90,viz.FOREVER))
 		self.crankshaft.addAction(vizact.spin(1,0,0, 152,viz.FOREVER))
-#		self.crankshaft.addAction(vizact.spin(0,0,1, 76,viz.FOREVER))
+#		self.crankshaft.addAction(vizact.spin(0,0,1, 90,viz.FOREVER))
 		try:
 			self.capPrevYPos = self.cap.getPosition(viz.ABS_GLOBAL)[1]
 			self._updateFunc.setEnabled(viz.ON)
@@ -829,6 +906,7 @@ class OilPump ():
 			self._updateFunc = vizact.onupdate(0, self.update)
 			
 	def EndMotion (self):
+		self.AdjustAudio(0)
 		self.wheelP.endAction()
 		self.crankshaft.endAction()
 		
@@ -852,7 +930,25 @@ class OilPump ():
 	def Stop (self):
 		self.StopCrazy()
 		self.EndMotion()
-		
+	
+	def PlayAudio (self, audio, obj=None, mode=viz.LOOP):
+		if not SOUNDS_ENABLED:
+			return
+		if obj == None:
+			obj = self.object
+		sound = obj.playsound('sounds/'+audio+'.wav', mode)
+		sound.minmax(5,30)
+		if mode == viz.LOOP: #constant machine loop
+			self.sound = sound
+	
+	def AdjustAudio (self, mode): #0-1->volume value, 0->stop
+		if not SOUNDS_ENABLED:
+			return
+		if mode>0:
+			self.sound.volume(mode)
+		else:
+			self.sound.stop()
+			
 		
 class Boiler ():
 	"""This is the Boiler class"""
@@ -861,7 +957,8 @@ class Boiler ():
 		self.hatch = (self.object.insertGroupBelow('HatchDoorL'), self.object.insertGroupBelow('HatchDoorR'))
 		self.gauge = self.object.insertGroupBelow('velona')
 		fire = viz.add('textures/fire.mov', loop=1, play=1)
-		self.fire = viz.addTexQuad(texture=fire, pos=[7.5,1.2,0], alpha=0)
+		self.fire = viz.addTexQuad(texture=fire, pos=[.15,1.2,0], size=1.2, alpha=0)
+		self.fire.setParent(self.object)
 		self.fire.visible(0)
 		self.object.setPosition(pos)
 		self.getComponents()
@@ -901,6 +998,8 @@ class Boiler ():
 		self.gauge.addAction(incPress)
 		
 	def OpenCloseHatch(self, open):	#open=True or False
+		if open:
+			self.PlayAudio('boiler_load', self.components['coal'], viz.PLAY)
 		angle = 120 * open
 		openLeft = vizact.spinTo(euler=[angle,0,0], time=2, interpolate=vizact.easeOut)
 		openRight = vizact.spinTo(euler=[-angle,0,0], time=2, interpolate=vizact.easeOut)
@@ -913,28 +1012,52 @@ class Boiler ():
 			coalFurnace.addAction(vizact.method.visible(1))
 			coalFurnace.addAction(vizact.fadeTo(1, begin=0, time=1))
 		elif act == 2:	#turn coals red and light fire
+			self.PlayAudio('boiler_light', coalFurnace, viz.PLAY)
 			fireSignal = vizact.signal()
-			coalFurnace.addAction(vizact.fadeTo(viz.RED, time=2))
+			coalFurnace.addAction(vizact.fadeTo(viz.RED, time=1))
 			coalFurnace.addAction(fireSignal.trigger)
 			cPos = coalFurnace.getPosition()
 			coalFurnace.addAction(vizact.moveTo([cPos[0],cPos[1],cPos[2]+.1],time=.5))
 			self.fire.addAction(fireSignal.wait)
 			self.fire.addAction(vizact.method.visible(1))
-			self.fire.addAction(vizact.fadeTo(0.5, time=1))
+			self.fire.addAction(vizact.fadeTo(0.75, time=1))
+			self.fire.addAction(vizact.waittime(4))
+			self.fire.addAction(vizact.call(self.PlayAudio, 'boiler_furnace'))
 		elif act == 3:	#fade out the coals and fire
+			self.AdjustAudio(.5)
 			coalFurnace.addAction(vizact.fadeTo(0.25, time=.5))
 			self.fire.addAction(vizact.fadeTo(0.25, time=.5))
 		elif act == 4:	#light up the coals and fire again
+			self.AdjustAudio(1)
 			coalFurnace.addAction(vizact.fadeTo(1, time=.5))
-			self.fire.addAction(vizact.fadeTo(.5, time=.5))
+			self.fire.addAction(vizact.fadeTo(.75, time=.5))
 		elif act == 5:	#fade out the coals and fire completely
+			self.AdjustAudio(0)
+			self.AdjustAudio(1)
 			coalFurnace.addAction(vizact.fadeTo(0, time=.5))
 			coalFurnace.addAction(vizact.method.setPosition([0,0,0]))
 			coalFurnace.addAction(vizact.method.color(viz.GRAY))
 			coalFurnace.addAction(vizact.method.visible(0))
 			self.fire.addAction(vizact.fadeTo(0, time=.5))
 			self.fire.addAction(vizact.method.visible(0))
-
+	
+	def PlayAudio (self, audio, obj=None, mode=viz.LOOP):
+		if not SOUNDS_ENABLED:
+			return
+		if obj == None:
+			obj = self.object
+		sound = obj.playsound('sounds/'+audio+'.wav', mode)
+		sound.minmax(5,30)
+		if mode == viz.LOOP: #constant machine loop
+			self.sound = sound
+	
+	def AdjustAudio (self, mode): #0-1->volume value, 0->stop
+		if not SOUNDS_ENABLED:
+			return
+		if mode>0:
+			self.sound.volume(mode)
+		else:
+			self.sound.stop()
 
 class Scale ():
 	"""This is the Laval class"""
@@ -1042,7 +1165,8 @@ class WaterPipe ():
 		
 	def Stop (self):
 		pass
-		
+
+	
 if __name__ == '__main__':
 	import vizcam
 	
@@ -1050,20 +1174,21 @@ if __name__ == '__main__':
 	viz.go()
 	
 	ground = viz.addChild('ground.osgb')
-	engine = Engine(ground, [0.58, 1, 2.97], [-90,0,0])	#476 drawables
-	vizact.onkeydown('e', engine.Start)
-	vizact.onkeydown('r', engine.Stop)
+	#engine = Engine(ground, [0.58, 1, 2.97], [-90,0,0])	#476 drawables
+	#vizact.onkeydown('e', engine.Start)
+	#vizact.onkeydown('r', engine.Stop)
+	
+	
+#	pump = Pump(ground, [5, 2, 10], [90,0,0], 'L', None)	#43 drawables
+#	press = Press(ground, [5, 1, 2.97], [0,0,0], 'L')	#32 drawables
+	boiler = Boiler(ground, [15, 0, 2.97])	#219 drawables
+#	laval = Laval(ground, [10, 0, 2.97], [-90,0,0], 'L' ,None)	#35 drawables
+#	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
 	
 	cam = vizcam.PivotNavigate(distance=2)
-	cam.centerNode(engine.piston)
+	cam.centerNode(boiler.object)
 	
-	pump = Pump(ground, [5, 2, 10], [90,0,0], 'L', None)	#43 drawables
-	press = Press(ground, [5, 1, 2.97], [0,0,0], 'L')	#32 drawables
-	boiler = Boiler(ground, [15, 0, 2.97])	#219 drawables
-	laval = Laval(ground, [10, 0, 2.97], [-90,0,0], 'L' ,None)	#35 drawables
-	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
-	
-	OilPump = OilPump(ground, [0, 1, 10], [180,0,0], False)	#29 drawables
+#	OilPump = OilPump(ground, [0, 1, 10], [180,0,0], False)	#29 drawables
 #	vizact.onkeydown('s', OilPump.SetMotion)
 #	vizact.onkeydown('d', OilPump.EndMotion)
 #	cam = vizcam.PivotNavigate(distance=2)

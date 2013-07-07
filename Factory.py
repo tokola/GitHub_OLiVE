@@ -133,8 +133,10 @@ class Factory ():
 			              pos=[-14.1,2.5,7.78], texture=viz.addTexture('textures/sign_press2.png'))
 	
 		if 'loader' in args:	#ADD THE LOADING TABLE
-			self.loader = Machinery.Loader(self, self.factory, [-14.1,0,5], [180,0,0])
+			self.loader = Machinery.Loader(self, self.factory, [-16.58,0,1.8], [180,0,0])
 			self.machines['loader'] = self.loader
+		else:
+			del self.toolsData['can']
 			
 		if 'lavalR' in args:		#ADD THE 2 LAVALS
 			self.lavalR = Machinery.Laval(self.factory, [-7.8,0,-5], [180,0,0], 'R', self)
@@ -329,7 +331,7 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-	machines = ('boiler', 'engine', 'pipe', 'lavalR', 'millR') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
+	machines = ('loader', 'boiler', 'engine', 'pipe', 'lavalR', 'millR', 'pressR', 'pumpR', 'oilPump') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
 #	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
 	oliveFactory = Factory()
 	oliveFactory.AddMachinery(machines)

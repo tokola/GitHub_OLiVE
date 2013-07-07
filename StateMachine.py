@@ -1,5 +1,6 @@
 ﻿import viz
 from string import upper
+from LogParser import sgetGameLoadingTime
 
 class StateMachine ():
 	def __init__(self, mach=None):
@@ -91,7 +92,7 @@ class StateMachine ():
 		sortInputs.sort()	#inputs should be recorded in alphabetical order in Excel
 		trigInput = ', '.join(sortInputs)
 		(acts, mess) = self.evaluate_state(trigInput)
-		print 'ACTIONS' + str(acts)
+
 		# notify players of multi-input (collab activity)
 		if ',' in trigInput and acts != []:
 			multi = True
@@ -116,12 +117,14 @@ class StateMachine ():
 			return acti
 		
 	def log_user_data (self, user_input, actions):
+		timeStamp = round(viz.tick()-sgetGameLoadingTime(False), 2)
 		for u, i in user_input.iteritems():
-			self.log.setdefault(u._player, []).append((i, actions, round(viz.tick(), 2)))
+			self.log.setdefault(u._player, []).append((i, actions, timeStamp))
 		#print "Log file:", self.log
 		
 	def log_state_change (self, oldState, trigger, actions):
-		self.sLog[round(viz.tick(),2)] = [oldState, trigger, self.currentState, actions]
+		timeStamp = round(viz.tick()-sgetGameLoadingTime(False),2)
+		self.sLog[timeStamp] = [oldState, trigger, self.currentState, actions]
 		#print "Time: %s State: %s, Input: %s, New state: %s" % (round(viz.tick(),2), prevState, eInput, self.currentState)
 		
 if __name__ == '__main__':

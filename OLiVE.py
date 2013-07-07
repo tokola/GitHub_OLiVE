@@ -25,12 +25,14 @@ viz.phys.enable()
 
 #DEFINE VARIABLES
 MACHINERY = {0: ('waterPipe'),
-			 #1: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')}
-			 1: ('millL', 'millR', 'lavalL', 'lavalR', 'scale')}
+			 1: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale'),
+			 5: ('millL', 'millR', 'loader', 'pressL', 'pressR', 'engine', 'boiler', 'lavalL', 'lavalR')}
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
 
 studyMode = 1	#set True for experiment
+CONDITION = 0	#0->1P, 1->3P
+TRIAL = 5		#0->practice, 1->trial, 5->test (studyMode=0)
 
 ##############################################
 ### MAKE THE INTERFACE AND DIFFERENT VIEWS ###
@@ -270,7 +272,7 @@ def getFaStates ():
 
 def AddProximitySensors():
 	manager = vizproximity.Manager()
-#	manager.setDebug(viz.ON)
+	manager.setDebug(viz.ON)
 	#Add line below so proximity shape does not interfere with picking
 #	manager.getDebugNode().disable([viz.PICKING,viz.INTERSECTION])
 	manager.setDebugColor(viz.RED)
@@ -408,14 +410,9 @@ def getTimerIDCode (id, anL, anR):
 		id = 82
 	return id, code
 	
-
-def onExit():
-	import vizinput
-#	vizinput.message('Thank you for playing the Olive Oil Game!!!')
-	if studyMode and trial:	#log data only for main trial
-		LogParser.storeLogData(FSM, gPlayers, condition, group)
-
-viz.callback(viz.EXIT_EVENT, onExit) 
+##############################
+## INITIALIZE AND EXIT GAME ##
+##############################
 
 def initialize ():
 	global olivePress, floorMap, inputPanel, names
@@ -439,6 +436,8 @@ def initialize ():
 	olivePress.AddOtherStuff()
 	#split the views according to players
 	splitViews()
+	#set the time passed before game starts
+	LogParser.sgetGameLoadingTime(True)
 	AddProximitySensors()
 	#initiate the factory states
 	(actions, message) = SyncFactoryStates ('FACTORY/START')
@@ -446,6 +445,17 @@ def initialize ():
 
 vizact.onkeydown('i', initialize)
 
+def onExit():
+#	import vizinput
+#	vizinput.message('Thank you for playing the Olive Oil Game!!!')
+	if studyMode and trial:	#log data only for main trial
+		try:
+			LogParser.storeLogData(FSM, gPlayers, condition, group)
+		except:
+			print "Finite State Machine not loaded!"
+			
+viz.callback(viz.EXIT_EVENT, onExit) 
+	
 #####################################
 ## EXPERIMENT CONDITIONS AND INPUT ##
 #####################################
@@ -454,6 +464,10 @@ def displayInputPanel():
 	global inputPanel, names
 	
 	inputPanel = viz.addGUIGroup()
+#	endG = viz.addGroup(viz.SCREEN)
+	splashScreen = viz.addTexQuad(parent=viz.SCREEN,pos=[0.5,0.5,0],scale=[13,10.5,1])
+	splashScreen.texture(viz.addTexture('textures/splash_screen.jpg'))
+	splashScreen.setParent(inputPanel)
 	names = []
 	pl = range(condition*2+1)
 	pl.reverse()
@@ -478,15 +492,15 @@ if studyMode:
 		group = viz.input('Choose group number:', '')
 		displayInputPanel()
 	else:
-		initialize()
+		initialize() 
 else:
-	condition = 0	#0->'1P', 1->'3P'
-	trial = 1		#1->full factory & logging, 0->practice
+	condition = CONDITION	#0->'1P', 1->'3P'
+	trial = TRIAL			#1->full factory & logging, 0->practice
 	initialize()
 	
 #----------------------------------------------------------------
 def sendEventToMachine (mach, action):
-	(mActions, mMessage) = FSM[mach].evaluate_multi_input(action, gPlayers[1]['player'], True)
+	(mActions, mMessage, multi) = FSM[mach].evaluate_multi_input(action, gPlayers[1]['player'], True)
 	gPlayers[1]['player'].BroadcastActionsMessages(mActions, mMessage)
 
 def changeFSMState (mach, newState):

@@ -12,6 +12,7 @@ import vizproximity
 import textwrap
 import fnmatch
 import FSM_Actions
+from LogParser import sgetGameLoadingTime
 
 GRABDIST = 2	# The threashold for grabbing/interacting with items
 
@@ -19,7 +20,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	"""This is the class for making a new view"""
 	
 	PLAYERS = WeakValueDictionary()	#holds all player instances (used by FSM_Actions)
-	sounds = {'score1':viz.addAudio('sounds/score1.wav'), 'score0':viz.addAudio('sounds/score0.wav')}
+	SOUNDS = {'score1':viz.addAudio('sounds/score1.wav'), 'score0':viz.addAudio('sounds/score0.wav'),
+			  'alert':viz.addAudio('sounds/alert.wav')}
 	
 	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, data=None, sm=None, fmap=None):
 		if view == None:
@@ -126,7 +128,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def AddMap (self):
 		self.flmap=viz.add('models/floor_map.IVE')
 		self.flmap.texture(viz.addTexture('textures/map_view.png'),'',0)
-		self.flmap.setPosition(0, .1, 0)
+		self.flmap.setPosition(0, .01, 0)
 		#self.flmap.setScale(1, 1, 1.1)
 		self.flmap.renderOnlyToWindows([self._window])
 		self.bg = viz.addTexQuad(parent=viz.ORTHO, scene=self._window)
@@ -209,7 +211,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._newScore = curScore + points
 		else:
 			self._newScore += points
-		self.sounds['score'+str(int(points>0))].play()
+		self.SOUNDS['score'+str(int(points>0))].play()
 		resize = vizact.sizeTo([1.5-(points<0),1.5-(points<0),0], time=.25)	#resizes to .5 if deducting points
 		color = [viz.RED, viz.GREEN][points>0]
 		fade = vizact.fadeTo(color, time=.25)
@@ -289,6 +291,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			#add new alert if there is NOT one already for this machine
 			alertSymbols = {1:'a', 2:'w'}
 			if not self._alerts.has_key(machine):
+				self.SOUNDS['alert'].play()
 				newAlert = viz.addTexQuad(size=1.25)
 				newAlert.texture(self._alertIcons[alertSymbols[flag]])
 				newAlert.renderOnlyToWindows([self._window])
@@ -469,8 +472,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			if len(objList) == 0:
 				return
 			toolObj = objList[0]
-			self.objList = objList
-#			print "OBJ",objList
+			if getattr(toolObj, 'pick_parent', False):
+				toolObj = toolObj.getParents()[0]
 #			print "TOOL interecting: ", toolObj
 			# RULE: ALL OBJECTS RESPOND TO HELD ITEMS; tools turn red, components turn green (1P) or orange(2-3P)
 			if self._selected == 'hand':				
@@ -769,17 +772,20 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	### LOGGING USER ACTIONS IN THE FACTORY ###
 	
 	def LogInventory (self, tool, pickDrop):
-		pd = ['dropped', 'picked'][pickDrop]
-		self._iLog.append((round(viz.tick(),2), self._player, tool, pickDrop))
+		timeStamp = round(viz.tick()-sgetGameLoadingTime(False),2)
+		self._iLog.append((timeStamp, self._player, tool, pickDrop))
+		#pd = ['dropped', 'picked'][pickDrop]
 		#print "Time %s: player %s %s the %s" % (round(viz.tick(),2), self._player, pd, tool)
 		
 	def LogProximity (self, mach, inOut):
-		self._proxLog.append((round(viz.tick(),2), self._player, mach, inOut))
+		timeStamp = round(viz.tick()-sgetGameLoadingTime(False),2)
+		self._proxLog.append((timeStamp, self._player, mach, inOut))
 		
 	def LogPosition (self):
-		#record player position every 2 seconds
+		timeStamp = round(viz.tick()-sgetGameLoadingTime(False),2)
+		#record player position every 1 second
 		if viz.tick() % 1 <= viz.getFrameElapsed():
-			self._pLog.append((round(viz.tick(),2), self._view.getPosition()[0], self._view.getPosition()[2]))
+			self._pLog.append((timeStamp, self._view.getPosition()[0], self._view.getPosition()[2]))
 		
 if __name__ == '__main__':
 
