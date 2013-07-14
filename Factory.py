@@ -149,6 +149,18 @@ class Factory ():
 			signL1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
 					pos=[-10.37,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval1.png'))
 		
+		if 'lavalL' in args or 'lavalR' in args:
+			# wheels and belts for the laval sub-system
+			wheel_lavalUp = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+			wheel_lavalUp.setPosition(-5, 5.77, -7.143)
+			wheel_lavalDn = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
+			wheel_lavalDn.setPosition(-5, 1.251, -7.38)
+			wheel_lavalDn.setScale(.75,.75,.75)
+			belt_laval = viz.add('models/objects/belt_laval.osgb', parent=self.factory, cache=viz.CACHE_CLONE)
+			belt_laval.setPosition(-4.95, 1.251, -7.38)
+			self.wheels['lavalR'] = [wheel_lavalUp, wheel_lavalDn]
+			self.belts['laval']  = Machinery.Belt(belt_laval)
+		
 		if 'oilPump' in args:
 			self.oilPump = Machinery.OilPump(self.factory, [-6.02,.25,-6.032], [180,0,0], self)
 			self.machines['oilPump'] = self.oilPump
@@ -165,17 +177,10 @@ class Factory ():
 		if 'waterPipe' in args:
 			self.waterPipe = Machinery.WaterPipe(self.factory, [11.8,-1,-8], [180,0,0])
 			self.machines['waterPipe'] = self.waterPipe
-			
-		# wheels and belts for the laval sub-system
-		wheel_lavalUp = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-		wheel_lavalUp.setPosition(-5, 5.77, -7.143)
-		wheel_lavalDn = viz.add('models/objects/wheel.ive', parent=self.factory, cache=viz.CACHE_CLONE)
-		wheel_lavalDn.setPosition(-5, 1.251, -7.38)
-		wheel_lavalDn.setScale(.75,.75,.75)
-		belt_laval = viz.add('models/objects/belt_laval.osgb', parent=self.factory, cache=viz.CACHE_CLONE)
-		belt_laval.setPosition(-4.95, 1.251, -7.38)
-		self.wheels['lavalR'] = [wheel_lavalUp, wheel_lavalDn]
-		self.belts['laval']  = Machinery.Belt(belt_laval)
+		
+		if 'wheelBarrow' in args:
+			self.wheelBarrow = Machinery.WheelBarrow(self.factory, [-15,0,14], [0,0,0], self)
+			self.machines['barrow'] = self.wheelBarrow
 				
 		#get all components from machines and store them in factory.components
 		self.AddComponentsToFactory()
@@ -241,11 +246,11 @@ class Factory ():
 		Light.setPosition(pos)
 		Light.color(lightColor)
 		Light.linearattenuation(intensity)
-		GlareQuad = viz.addTexQuad(parent=Light)
-		GlareQuad.billboard()
-		GlareQuad.color(glareColor)
-		GlareQuad.disable(viz.LIGHTING)
-		GlareQuad.setScale([0.2,0.2,0.2])
+#		GlareQuad = viz.addTexQuad(parent=Light)
+#		GlareQuad.billboard()
+#		GlareQuad.color(glareColor)
+#		GlareQuad.disable(viz.LIGHTING)
+#		GlareQuad.setScale([0.2,0.2,0.2])
 		return Light
 	
 	###### USED FOR TOOL MANIPULATION FROM THE LOADER ########
@@ -292,10 +297,10 @@ class Factory ():
 					#reverse the gear & wheel rotation for the left mill
 					if m == 'millL' and self.wheels[m].index(w) == 1:
 						rev = -1
-					w.addAction(vizact.spin(1,0,0, -76*rev,viz.FOREVER))
+					w.addAction(vizact.spin(1,0,0, -90*rev,viz.FOREVER))
 			#animate machinery belts
 			self.belts['laval'].Start()
-			if  self.belts.has_key(m):	#check if this machine has wheels
+			if  self.belts.has_key(m):	#check if this machine has belts
 				b = self.belts[m]
 #				if m == 'lavalR':
 				b.Start()
@@ -331,7 +336,7 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-	machines = ('loader', 'boiler', 'engine', 'pipe', 'lavalR', 'millR', 'pressR', 'pumpR', 'oilPump') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
+	machines = ('wheelBarrow') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
 #	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
 	oliveFactory = Factory()
 	oliveFactory.AddMachinery(machines)

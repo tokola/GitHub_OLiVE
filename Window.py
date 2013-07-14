@@ -21,7 +21,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	
 	PLAYERS = WeakValueDictionary()	#holds all player instances (used by FSM_Actions)
 	SOUNDS = {'score1':viz.addAudio('sounds/score1.wav'), 'score0':viz.addAudio('sounds/score0.wav'),
-			  'alert':viz.addAudio('sounds/alert.wav')}
+			  'alert':viz.addAudio('sounds/alert.wav'), 'oil':viz.addAudio('sounds/oil_counter.wav'),
+			  'victory':viz.addAudio('sounds/victory.wav')}
 	
 	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, data=None, sm=None, fmap=None):
 		if view == None:
@@ -126,8 +127,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	### ONLY FOR THE MAP WINDOW ###
 	
 	def AddMap (self):
-		self.flmap=viz.add('models/floor_map.IVE')
-		self.flmap.texture(viz.addTexture('textures/map_view.png'),'',0)
+		self.flmap=viz.add('models/floor_map2.IVE')
+#		self.flmap.texture(viz.addTexture('textures/map_view.png'),'',0)
 		self.flmap.setPosition(0, .01, 0)
 		#self.flmap.setScale(1, 1, 1.1)
 		self.flmap.renderOnlyToWindows([self._window])
@@ -185,7 +186,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		try:
 			self._total.alignment(viz.ALIGN_RIGHT_BASE)
 		except:
-			row3text = viz.addText('Total points')
+			row3text = viz.addText('Score')
 			row3text.font("Segoe UI")
 			row3icon = viz.addTexQuad(size=25, texture=viz.add('textures/total_icon.png'))
 			self._total= viz.addText('000')
@@ -194,6 +195,8 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._scorePanel.addRow([row3icon, row3text, self._total])
 		
 	def IncreaseOilTotal (self, dur, amount):
+		self.SOUNDS['oil'].loop(viz.ON)
+		self.SOUNDS['oil'].play()
 		score = int(self._score.getMessage())
 		oil = int(self._oil.getMessage())
 		total = int(self._total.getMessage())
@@ -201,9 +204,13 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		totalCounter = vizact.mix(total, total+score*amount, time=dur)
 		self._total.addAction(vizact.call(self.CounterIncrease, self._total, totalCounter))
 		self._oil.addAction(vizact.call(self.CounterIncrease, self._oil, oilCounter))
-	
+		self._oil.addAction(vizact.call(self.CounterSoundStop))
+		
 	def CounterIncrease (self, counter, val):
 		counter.message(str(int(val)))
+	
+	def CounterSoundStop (self):
+		self.SOUNDS['oil'].stop()
 		
 	def UpdateScore(self, points):
 		curScore = int(self._score.getMessage())
@@ -240,7 +247,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self.info.messagecolor(100,100,0)
 		self.info.bgcolor(viz.BLACK, 0.8)
 		self.info.bordercolor([100,100,0], .9)
-		points = self.info.add(viz.TEXQUAD, 'Total points: %s' % self._total.getMessage())
+		points = self.info.add(viz.TEXQUAD, 'Score: %s' % self._total.getMessage())
 		points.texture(viz.add('textures/total_icon.png'))
 		time = self.info.add(viz.TEXQUAD, 'Time taken: %s' % self.ConvertTime(viz.tick()))
 		time.texture(viz.add('textures/time_icon.png'))
@@ -255,9 +262,13 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			p._hud.visible(0)
 		time.addAction(vizact.waittime(delay))
 		time.addAction(vizact.call(self.info.visible, 1))
-		time.addAction(vizact.waittime(.5))
+		time.addAction(vizact.waittime(.1))
+		time.addAction(vizact.call(self.PlayVictory))
 		time.addAction(vizact.call(self.info.expand))
 	
+	def PlayVictory (self):
+		self.SOUNDS['victory'].play()
+		
 	def ConvertTime(self, time):
 		time = round(time, 2)
 		mins = int(time/60)

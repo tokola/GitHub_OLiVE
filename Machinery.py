@@ -3,8 +3,6 @@ import vizmat
 import vizact
 import vizproximity
 
-viz.go()
-
 SOUNDS_ENABLED = 0
 
 class Pump():
@@ -197,7 +195,7 @@ class Mill ():
 		self.AddSacks()
 	
 	def AddSacks (self):
-		self.sackItem = viz.add('models/objects/sack'+self.LR+'.osgb')
+		self.sackItem = self.factory.add('models/objects/sack'+self.LR+'.osgb')
 		#The alpha is being applied as part of the material, but both sacks use the same material. 
 		#Vizard preserves material instancing by default, but you can break the instancing using...
 		self.sackItem.hint(viz.COPY_SHARED_MATERIAL_HINT)
@@ -405,7 +403,16 @@ class Engine ():
 		#this is called by the AddProximitySensors() of the main module
 		base = self.object.insertGroupBelow('middle_base')
 		self.proximityData = (vizproximity.RectangleArea([20,8]), base)
-
+	
+	def getComponents (self):
+		self.components = {}
+		self.componentPos = {}
+		valve = self.object.insertGroupBelow('valve')
+		#valveBox = valve.add('box.wrl',alpha=0,scale=valve.getBoundingBox().size)
+		#valveBox.pick_parent = True
+		self.components['valve'] = valve
+		self.componentPos[valve] = [1.563+.58, .6+.475, 2.97-2.76]
+		
 	#Get the engine working
 	def Start (self):
 		self.PlayAudio('steam_engine')
@@ -432,10 +439,6 @@ class Engine ():
 		capShift = self.capPrevZPos - self.cap.getPosition(viz.ABS_GLOBAL)[2]
 		self.piston.setPosition(pistonPos[0]-capShift*2.534443502684017, 0, 0)
 		self.capPrevZPos = self.cap.getPosition(viz.ABS_GLOBAL)[2]
-#		if self.cap.getPosition(viz.ABS_GLOBAL)[2] < 2.66814:
-#			print "cap left most: ", self.cap.getPosition(viz.ABS_GLOBAL)[2], self.piston.getPosition()[0]
-#		if self.cap.getPosition(viz.ABS_GLOBAL)[2] > 3.2718:
-#			print "cap right most: ", self.cap.getPosition(viz.ABS_GLOBAL)[2], self.piston.getPosition()[0]	
 	
 	def Stop (self):
 		self.AdjustAudio(0)
@@ -443,15 +446,6 @@ class Engine ():
 		self.spool.endAction()
 		self.watt.endAction()
 		self._updateFunc.setEnabled(viz.OFF)
-		
-	def getComponents (self):
-		self.components = {}
-		self.componentPos = {}
-		valve = self.object.insertGroupBelow('valve')
-		valveBox = valve.add('box.wrl',alpha=0,scale=valve.getBoundingBox().size)
-		valveBox.pick_parent = True
-		self.components['valve'] = valve
-		self.componentPos[valve] = [1.563+.58, .6+.475, 2.97-2.76]
 		
 	def E_openValve (self, time):
 		self.components['valve'].addAction(vizact.spin(0,1,0,360,time))
@@ -989,12 +983,12 @@ class Boiler ():
 		angle = int(pressure) * 2.25
 		ease = vizact.easeInOutCubic
 		# spin to 180 degrees first, because spinTo chooses the shortest path (CCW in this case)
-		if angle == 270:
+		if angle == 270 and self.gauge.getAxisAngle()[3]<180:
 			incPress = vizact.spinTo(euler=[0,0,-180], time=int(duration)*2/3, interpolate=vizact.easeInCubic)
 			duration = int(duration)*1/3
 			self.gauge.addAction(incPress)
 			ease = vizact.easeOutCubic
-		incPress = vizact.spinTo(euler=[0,0,-angle], time=int(duration), interpolate=ease)
+		incPress = vizact.spinTo(axisAngle=[0,0,-1,angle], time=int(duration), interpolate=ease)
 		self.gauge.addAction(incPress)
 		
 	def OpenCloseHatch(self, open):	#open=True or False
@@ -1093,18 +1087,18 @@ class Belt ():
 #		self.timer.setEnabled(viz.OFF)
 	
 	def Start(self):
-		self.belt.setAnimationSpeed(1)
+		self.belt.setAnimationSpeed(1.2)
 #		self.timer.setEnabled(viz.ON)		
 	
 	def Stop(self):
 		self.belt.setAnimationSpeed(0)
 #		self.timer.setEnabled(viz.OFF)
 		
-	def TurnBelt(self):
-		self.matrix1.postTrans(0,.04,0)
-		self.matrix2.postTrans(0,-.04,0)
-		self.belt.texmat(self.matrix1,'belt1',0)
-		self.belt.texmat(self.matrix2,'belt2',0)
+#	def TurnBelt(self):
+#		self.matrix1.postTrans(0,.04,0)
+#		self.matrix2.postTrans(0,-.04,0)
+#		self.belt.texmat(self.matrix1,'belt1',0)
+#		self.belt.texmat(self.matrix2,'belt2',0)
 		
 	def MoveBelt (self, dir, dist):
 		pos = self.belt.getPosition()
@@ -1120,7 +1114,7 @@ class WaterPipe ():
 		self.object.setEuler(eul)
 		self.pipe = self.object.getChild('missingPipe')
 		#this is called by the AddProximitySensors() of the main module
-		self.proximityData = (vizproximity.RectangleArea([2.5,2.5]), self.object)
+		self.proximityData = (vizproximity.RectangleArea([3,3]), self.object)
 		self.getComponents()
 		
 	def getComponents (self):
@@ -1166,6 +1160,47 @@ class WaterPipe ():
 	def Stop (self):
 		pass
 
+class WheelBarrow ():
+	"""This is the WaterPipe class used for practice"""
+	def __init__(self, factory, pos, eul, faClass):
+		self.object = factory.add('models/wheelBarrow.ive')
+		self.object.setPosition(pos)
+		self.object.setEuler(eul)
+		self.faClass = faClass
+		self.wheel = self.object.insertGroupBelow('wheel')
+		#this is called by the AddProximitySensors() of the main module
+		self.proximityData = (vizproximity.RectangleArea([4,3]), self.object)
+		self.getComponents()
+		
+	def getComponents (self):
+		self.components = {}
+		self.componentPos = {}
+		barrow = self.object.insertGroupBelow('barrow')
+		self.components['barrow'] = barrow
+		pos = self.object.getPosition()
+		self.componentPos[barrow] = [pos[0], pos[1]+.5, pos[2]]
+	
+	def MoveBarrow (self):
+		barrow = self.components['barrow']
+		#update barrow to the new position
+		self.faClass.componentPos[barrow] = [-22.5,0.5,9.5]
+		barrow.addAction(vizact.spinTo(euler=[0,0,10], time=.5))
+		waitLift = vizact.signal()
+		barrow.addAction(waitLift.trigger)
+		self.wheel.addAction(waitLift.wait)
+		self.wheel.addAction(vizact.spin(0,0,1,120, dur=4))
+		moveB = vizact.moveTo([-22.5,0.325,9.5], time=4, mode=viz.ABS_GLOBAL, interpolate=vizact.easeOut)
+		rotateB = vizact.spinTo(euler=[-90,0,10], time=5)
+		barrow.addAction(vizact.parallel(moveB, rotateB))
+		barrow.addAction(vizact.spinTo(euler=[-90,0,0], time=.5))
+	
+	def ResetBarrow (self):
+		barrow = self.components['barrow']
+		barrow.setPosition([0,0,0])
+		barrow.setEuler([0,0,0])
+		pos = self.object.getPosition()
+		self.faClass.componentPos[barrow] = [pos[0], pos[1]+.5, pos[2]]
+		
 	
 if __name__ == '__main__':
 	import vizcam
@@ -1181,12 +1216,12 @@ if __name__ == '__main__':
 	
 #	pump = Pump(ground, [5, 2, 10], [90,0,0], 'L', None)	#43 drawables
 #	press = Press(ground, [5, 1, 2.97], [0,0,0], 'L')	#32 drawables
-	boiler = Boiler(ground, [15, 0, 2.97])	#219 drawables
+#	boiler = Boiler(ground, [15, 0, 2.97])	#219 drawables
 #	laval = Laval(ground, [10, 0, 2.97], [-90,0,0], 'L' ,None)	#35 drawables
-#	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
+	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
 	
 	cam = vizcam.PivotNavigate(distance=2)
-	cam.centerNode(boiler.object)
+	cam.centerNode(mill.object)
 	
 #	OilPump = OilPump(ground, [0, 1, 10], [180,0,0], False)	#29 drawables
 #	vizact.onkeydown('s', OilPump.SetMotion)

@@ -5,6 +5,7 @@ sys.dont_write_bytecode = True
 import viz
 import vizact
 import vizjoy
+import vizinput
 import vizproximity
 from string import upper, lower
 import Factory
@@ -14,17 +15,13 @@ import Avatar
 import StateMachine
 import LogParser
 
+viz.setMultiSample(4)
 viz.go(viz.FULLSCREEN)
 
 viz.phys.enable()
-#viz.MainView.setPosition(-10,2,-5)
-#viz.MainView.setEuler(-90,0,0)
-#viz.fov(60)
-#viz.collision(viz.ON)
-#viz.clearcolor(viz.SKYBLUE)
 
 #DEFINE VARIABLES
-MACHINERY = {0: ('waterPipe'),
+MACHINERY = {0: ('waterPipe', 'wheelBarrow'),
 			 1: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale'),
 			 5: ('millL', 'millR', 'loader', 'pressL', 'pressR', 'engine', 'boiler', 'lavalL', 'lavalR')}
 EYEHEIGHT = 1.75
@@ -39,22 +36,22 @@ TRIAL = 5		#0->practice, 1->trial, 5->test (studyMode=0)
 ##############################################
 
 gPlayers = {}		#dictionaty with player, joystick, and avatar classes
-gPlayerData = {1: {'name': 'Player 1', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-15,EYEHEIGHT,0]},
-               2: {'name': 'Player 2', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-10,EYEHEIGHT,0]},
+gPlayerData = {1: {'name': 'Player 1', 'colors': [[197, 106, 183], [97, 50, 83]], 'pos': [-10,EYEHEIGHT,0]},
+               2: {'name': 'Player 2', 'colors': [[83, 171, 224], [36, 70, 90]], 'pos': [-7.5,EYEHEIGHT,0]},
                3: {'name': 'Player 3', 'colors': [[255, 189, 0], [135, 100, 0]], 'pos': [-5,EYEHEIGHT,0]}}
 	
 def splitViews ():
 	global olivePress, floorMap, playerByView
-
+	
 	# set the four different views in seperate windows (3 players and the map)
 	floorMap = Window.PlayerView(winPos=[0.5,1])
-	p1 = Window.PlayerView(view=viz.MainView, win=viz.MainWindow, winPos=[0,1], player=1, data=gPlayerData[1], fact=olivePress, sm=FSM, fmap=floorMap)
+	p1 = Window.PlayerView(view=viz.MainView, winPos=[0,1], player=1, data=gPlayerData[1], fact=olivePress, sm=FSM, fmap=floorMap)
 	# assign the joystick to player 1
 	j1 = Interaction.Joystick(p1._window, p1, DEVICE)
 	# set the avatar for player 1
 	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'], EYEHEIGHT)
 	players = [[p1, j1, a1]]
-	if condition > 0:	#if more the 3P condition was chosen (condition=1)
+	if condition > 0:	#the 3P condition was chosen (condition=1)
 		p2 = Window.PlayerView(winPos=[0,.5], player=2, data=gPlayerData[2], fact=olivePress, sm=FSM, fmap=floorMap)
 		j2 = Interaction.Joystick(p2._window, p2, DEVICE)
 		a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
@@ -70,10 +67,10 @@ def splitViews ():
 		player, joy, avatar = p[0], p[1], p[2]
 		gPlayers[playNum] = {'player': player, 'joy': joy, 'avatar': avatar}
 		#hide avatars from their window and the map; render map avatar only on map
-		avatar._avatar.renderToAllWindowsExcept([player._window, floorMap._window])
-		avatar._mapAva.renderOnlyToWindows([floorMap._window])
+		avatar._avatar.renderToAllWindowsExcept([viz.MainWindow, player._window, floorMap._window])
+		avatar._mapAva.renderOnlyToWindows([viz.MainWindow, floorMap._window])
 		playerByView[player._view] = player
-	olivePress.factory.renderToAllWindowsExcept([floorMap._window])
+	olivePress.factory.renderToAllWindowsExcept([viz.MainWindow, floorMap._window])
 	
 vizact.onkeydown('v', splitViews)
 
@@ -272,7 +269,7 @@ def getFaStates ():
 
 def AddProximitySensors():
 	manager = vizproximity.Manager()
-	manager.setDebug(viz.ON)
+#	manager.setDebug(viz.ON)
 	#Add line below so proximity shape does not interfere with picking
 #	manager.getDebugNode().disable([viz.PICKING,viz.INTERSECTION])
 	manager.setDebugColor(viz.RED)
@@ -386,10 +383,12 @@ def timerExpire(id):
 		anims = {801: 'pitcher', 802: 'reminder', 803: 'finished'}
 		(actions, message) = FSM['scale'].evaluate_state('weigh-'+anims[id])
 		
-	# TIMERS FOR WATER PIPE [PRACTICE]
+	# TIMERS FOR WATER PIPE AND WHEEL BARROW [PRACTICE]
 	elif id in range(1000, 1005):	# timer for scale expiration
 		anims = {1000: 'waitAnim', 1001: 'done', 1002: 'high', 1003: 'max'}
 		(actions, message) = FSM['waterPipe'].evaluate_state('water-'+anims[id])
+	elif id == 1010:
+		(actions, message) = FSM['barrow'].evaluate_state('anim-finished')
 		
 	# TIMER FOR EXPIRATION FOR ENABLING PLAYER 1 TO EXECUTE MULTI-INPUT ACTION
 	elif id == 1100:
@@ -445,8 +444,13 @@ def initialize ():
 
 vizact.onkeydown('i', initialize)
 
+def onInit():
+	if studyMode and trial:	#ensure user position is logged
+		vizinput.message('User location is not logged!')
+
+viz.callback(viz.INIT_EVENT, onInit) 
+
 def onExit():
-#	import vizinput
 #	vizinput.message('Thank you for playing the Olive Oil Game!!!')
 	if studyMode and trial:	#log data only for main trial
 		try:

@@ -334,24 +334,35 @@ class FSM_Actions ():
 			elif 'attaching_pipe' in action:
 				if '*' in action:
 					self._factory.waterPipe.AttachPipe()
+				if self._selected == 'pipe':#the one holding the pipe should...	
+					self.DropObject(False)	#drop it without putting in back in place
 			elif action == 'opening_valve':
 				self._factory.waterPipe.OpenValve(2)
 			elif action == 'closing_valve':
 				self._factory.waterPipe.CloseValve(2)
-				viz.starttimer(1000, 5, 0)
+				viz.starttimer(1000, 10, 0)
 			elif action == 'damaging_pipe':
 				viz.starttimer(1000, delay[0], 0)
 				self._factory.waterPipe.Damage(True)
+			elif action == 'resetting_pipe':
+				self.AddToWorld('pipe')
 			elif 'timerW' in action:
 				timerTag = action.partition('_')[2]
 				timerCode = action.partition('_')[0][-1:]	#1=set timer, 0=kill timer
-				#e.g., (401,10) -> set timer id=477 (76+401) or id=484 (82+402) for 10 secs
-				#10, 30, 30 secs should be also set in the laval's ChangePressure function 
 				timers = {'done':1001, 'high':1002, 'max':1003}
 				if int(timerCode) == 1:
 					viz.starttimer(timers[timerTag], delay[0], 0)
 				else:
 					viz.killtimer(timers[timerTag])
+			
+			####### WHEEL BARROW ACTIONS [PRACTICE] ######
+			elif 'moving_barrow' in action:
+				if '*' in action:
+					self._factory.wheelBarrow.MoveBarrow()
+			elif action == 'reset_delay':
+				viz.starttimer(1010, delay[0], 0)
+			elif action == 'resetting_barrow':
+				self._factory.wheelBarrow.ResetBarrow()
 			
 			# CHECK IF IN 1P CONDITION AND REMOVE SECOND PLAYER DEMAND
 			elif 'enable1P' in action:
