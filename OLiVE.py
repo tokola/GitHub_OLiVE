@@ -15,21 +15,54 @@ import Avatar
 import StateMachine
 import LogParser
 
-viz.setMultiSample(4)
+#viz.setMultiSample(4)
 viz.go(viz.FULLSCREEN)
 
 viz.phys.enable()
 
-#DEFINE VARIABLES
+### STUDY VARIABLES ###
+
+studyMode = 1	#set True for experiment
+CONDITION = 1	#0->1P, 1->3P
+TRIAL = 5		#0->practice, 1->trial, 5->test (studyMode=0)
+
+### GAME VARIABLES ###
 MACHINERY = {0: ('waterPipe', 'wheelBarrow'),
 			 1: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale'),
-			 5: ('millL', 'millR', 'loader', 'pressL', 'pressR', 'engine', 'boiler', 'lavalL', 'lavalR')}
+			 5: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')}
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
 
-studyMode = 1	#set True for experiment
-CONDITION = 0	#0->1P, 1->3P
-TRIAL = 5		#0->practice, 1->trial, 5->test (studyMode=0)
+#############################################################
+### LOAD DEPENDENCIES FROM DISK AND CREATE PERSISTENT EXE ###
+
+# Add publish EXE path to resource path
+if viz.res.getPublishedPath():
+    viz.res.addPath(viz.res.getPublishedPath())
+
+# Exclude all files containing...
+viz.res.addPublishFilter('*.jpg*')
+viz.res.addPublishFilter('*.png*')
+#viz.res.addPublishFilter('*.gif*')
+viz.res.addPublishFilter('*.tga*')
+viz.res.addPublishFilter('*.ive*')
+#viz.res.addPublishFilter('*.wrl*')
+viz.res.addPublishFilter('*.osgb*')
+viz.res.addPublishFilter('*.wav*')
+viz.res.addPublishFilter('*.mov*')
+#viz.res.addPublishFilter('*.xlsx*')
+viz.res.addPublishFilter('*.log*')
+viz.res.addPublishFileLoader('wav')
+viz.res.addPublishFileLoader('jpg')
+viz.res.addPublishFileLoader('wrl')
+viz.res.addPublishFileLoader('ive')
+#viz.res.addPublishFileLoader('xlsx')
+
+# Setup persistent published EXE in AppData directory
+viz.setOption('viz.publish.persistent',1)
+viz.setOption('viz.publish.product','C-OLiVE')
+#viz.setOption('viz.publish.company','MyCompany')
+viz.setOption('viz.publish.persist_folder','<appdata>/<product>')
 
 ##############################################
 ### MAKE THE INTERFACE AND DIFFERENT VIEWS ###
@@ -71,6 +104,8 @@ def splitViews ():
 		avatar._mapAva.renderOnlyToWindows([viz.MainWindow, floorMap._window])
 		playerByView[player._view] = player
 	olivePress.factory.renderToAllWindowsExcept([viz.MainWindow, floorMap._window])
+	#prevent game finish panel to appear in the main window (for 1P condition)
+	viz.MainWindow.visible(0, viz.SCREEN)
 	
 vizact.onkeydown('v', splitViews)
 

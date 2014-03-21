@@ -44,6 +44,11 @@ class Pump():
 		self.componentPos = {}
 		valve = self.object.getChild('bypassValve')
 		valve.center(169.156, -858.204, 350.093)
+		#allows valve to be selected using its bounding box
+		geodePos = valve.getChild('bypassValve-GEODE').getPosition(viz.ABS_GLOBAL)
+		box = valve.add('models/objects/box.wrl',alpha=0,scale=valve.getBoundingBox().size)
+		box.setPosition(geodePos, viz.ABS_GLOBAL)
+		box.pick_parent = True
 		self.components['bypass'+self.LR] = valve
 		self.componentPos[valve] = self.object.getPosition()
 		guide = self.object.getChild('beltGuide')
@@ -224,6 +229,7 @@ class Mill ():
 		self._usedSackCounter += 1
 		sack = self.components['sack'+sid]
 		self.sack_path = self.sackItem.getChild('path'+sid).copy()
+		self.sack_path.setParent(self.factory)	#prevent from appearing in MainWindow
 		sack.setParent(self.sack_path, node='path'+sid)
 		self.sack_path.setAnimationSpeed(1)
 		sack.addAction(vizact.waittime(3))	#wait for sack animation
@@ -407,9 +413,13 @@ class Engine ():
 	def getComponents (self):
 		self.components = {}
 		self.componentPos = {}
-		valve = self.object.insertGroupBelow('valve')
-		#valveBox = valve.add('box.wrl',alpha=0,scale=valve.getBoundingBox().size)
-		#valveBox.pick_parent = True
+		valve = self.object.getChild('valve')
+		valve.center([-2.759, 0.475, -1.563])
+		#allows valve to be selected using its bounding box
+		geodePos = valve.getChild('valve-GEODE').getPosition(viz.ABS_GLOBAL)
+		box = valve.add('models/objects/box.wrl',alpha=0,scale=valve.getBoundingBox().size)
+		box.setPosition(geodePos, viz.ABS_GLOBAL)
+		box.pick_parent = True
 		self.components['valve'] = valve
 		self.componentPos[valve] = [1.563+.58, .6+.475, 2.97-2.76]
 		
@@ -448,10 +458,10 @@ class Engine ():
 		self._updateFunc.setEnabled(viz.OFF)
 		
 	def E_openValve (self, time):
-		self.components['valve'].addAction(vizact.spin(0,1,0,360,time))
+		self.components['valve'].addAction(vizact.spin(0,0,1,360,time))
 		
 	def E_closeValve (self, time):
-		self.components['valve'].addAction(vizact.spin(0,1,0,-360,time))
+		self.components['valve'].addAction(vizact.spin(0,0,1,-360,time))
 		
 	def PlayAudio (self, audio, obj=None, mode=viz.LOOP):
 		if not SOUNDS_ENABLED:
@@ -687,7 +697,8 @@ class Laval ():
 		base.setPosition(pos[0]-.02, pos[1], pos[2]+.05)
 		base.scale(.12,.1,.25)
 		self.belt = self.object.getChild('belt_laval')
-		self.faClass.belts['laval'+self.LR] = Belt(self.belt)
+		if self.faClass != None:
+			self.faClass.belts['laval'+self.LR] = Belt(self.belt)
 		self.power_wheel = self.object.getChild('powerW')
 		self.power_wheel.center(-.393, .643, .048)
 #		self.gauge = self.object.getChild('gauge')
@@ -708,6 +719,11 @@ class Laval ():
 		self.componentPos = {}
 		handle = self.object.getChild('handle')
 		handle.center(-.47, .834, 0.197)
+		#allows handle to be selected using its bounding box
+		geodePos = handle.getChild('handle-GEODE').getPosition(viz.ABS_GLOBAL)
+		box = handle.add('models/objects/box.wrl',alpha=0,scale=handle.getBoundingBox().size)
+		box.setPosition(geodePos, viz.ABS_GLOBAL)
+		box.pick_parent = True
 		lavalPos = self.object.getPosition()
 		self.components['handle'+self.LR] = handle
 		self.componentPos[handle] = [lavalPos[0]+.5, lavalPos[1]+.5, lavalPos[2]]
@@ -975,7 +991,7 @@ class Boiler ():
 		coalLoad.visible(0)
 		coalLoad.alpha(0)
 		boiPos = self.object.getPosition()
-		self.componentPos[coal] = [boiPos[0]+1.5, boiPos[1]+.23, boiPos[2]-.6]
+		self.componentPos[coal] = [boiPos[0]+1.5, boiPos[1]+1, boiPos[2]-.6]
 		self.componentPos[coalLoad] = boiPos
 		
 	def ChangePressure(self, pressure, duration):
@@ -1209,22 +1225,35 @@ if __name__ == '__main__':
 	viz.go()
 	
 	ground = viz.addChild('ground.osgb')
-	#engine = Engine(ground, [0.58, 1, 2.97], [-90,0,0])	#476 drawables
-	#vizact.onkeydown('e', engine.Start)
-	#vizact.onkeydown('r', engine.Stop)
+#	engine = Engine(ground, [0.58, 1, 2.97], [-90,0,0])	#476 drawables
+#	vizact.onkeydown('e', engine.Start)
+#	vizact.onkeydown('r', engine.Stop)
 	
 	
-#	pump = Pump(ground, [5, 2, 10], [90,0,0], 'L', None)	#43 drawables
+	pump = Pump(ground, [5, 2, 10], [90,0,0], 'L', None)	#43 drawables
 #	press = Press(ground, [5, 1, 2.97], [0,0,0], 'L')	#32 drawables
 #	boiler = Boiler(ground, [15, 0, 2.97])	#219 drawables
 #	laval = Laval(ground, [10, 0, 2.97], [-90,0,0], 'L' ,None)	#35 drawables
-	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
+#	mill = Mill(ground, [5, 0, 2.97], [-90,0,0], 'L')	#150 drawables
 	
 	cam = vizcam.PivotNavigate(distance=2)
-	cam.centerNode(mill.object)
+	cam.centerNode(pump.object)
 	
 #	OilPump = OilPump(ground, [0, 1, 10], [180,0,0], False)	#29 drawables
 #	vizact.onkeydown('s', OilPump.SetMotion)
 #	vizact.onkeydown('d', OilPump.EndMotion)
 #	cam = vizcam.PivotNavigate(distance=2)
 #	cam.centerNode(OilPump.rod)
+
+	def onPick():
+		object = viz.pick()
+		handle = pump.components['bypassL']
+		if object == handle:
+			print 'valve picked'
+			object.color(viz.GREEN, op=viz.OP_OVERRIDE)
+		elif getattr(object, 'pick_parent', False):
+			object.getParents()[0].color(viz.GREEN, op=viz.OP_OVERRIDE)
+		else:
+			handle.clearAttribute(viz.ATTR_COLOR, op=viz.OP_OVERRIDE)
+	
+	vizact.onmousedown(viz.MOUSEBUTTON_LEFT,onPick)

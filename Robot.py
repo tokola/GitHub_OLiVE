@@ -22,7 +22,7 @@ class Steve(viz.VizNode):
 	def __init__(self,**kw):
 
 		# Initialize base class with model
-		model = viz.addChild('steve.ive')
+		model = viz.addChild('models/steve.ive')
 		model.setCenter(0,.3,0)
 		viz.VizNode.__init__(self,model.id,**kw)
 

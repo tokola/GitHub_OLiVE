@@ -53,22 +53,22 @@ def storeLogData (FSM, players, cond, gr):
 def saveLogFile(kind, content, condi, group):
 	#stamp = str(datetime.date.today().month)+'.'+str(datetime.date.today().day)
 	folder = 'Trial'+chr(66+condi)+str(group)
-	d = os.path.dirname('./study/'+folder+'/')
+	d = os.path.dirname(viz.res.getPublishedPath()+'study/'+folder+'/')
 	if not os.path.exists(d):
 		os.makedirs(d)
-	file = open('study/'+folder+'/log_'+kind, 'w')
+	file = open(viz.res.getPublishedPath()+'study/'+folder+'/log_'+kind, 'w')
 	pickle.dump(content, file)
 	file.close()
 	saveLastTrial(chr(66+condi)+str(group))
 
 def saveLastTrial(trial):	#store the code of the latest trial
-	file = open('study/last_trial', 'w')
+	file = open(viz.res.getPublishedPath()+'study/last_trial', 'w')
 	pickle.dump(trial, file)
 	file.close()
 	
 def getLatestTrial():
 	try:
-		file = open('study/last_trial', 'r')
+		file = open(viz.res.getPublishedPath()+'study/last_trial', 'r')
 		trial = pickle.load(file)
 		file.close()
 		return trial
@@ -78,14 +78,14 @@ def getLatestTrial():
 def loadLogFile(kind, trial=getLatestTrial()):
 	folder = 'Trial'+trial
 	try:
-		file = open('study/'+folder+'/log_'+kind, 'r')
+		file = open(viz.res.getPublishedPath()+'study/'+folder+'/log_'+kind, 'r')
 		log = pickle.load(file)
 		file.close()
 		return log
 	except IOError:
 		print "FILE NOT FOUND!"
 		
-def printLogFile(parser, trial=getLatestTrial()):
+def printPlayerLog(parser, trial=getLatestTrial()):
 	import time
 	data = loadLogFile('user', trial)
 	# Output log in readable format: i[0]->time, i[1]->player, i[2]->name, i[3]->machine, i[4]->input, i[5]->actions
@@ -102,7 +102,16 @@ def printLogFile(parser, trial=getLatestTrial()):
 			print "Machine: %s | At %s player P%s (%s) performed %s and caused actions: %s" %(i[4], i[0], i[1],  i[2], i[3], str(i[5]))
 		elif parser == 'player':
 			print "Player%s: %s | At %s performed %s on machine %s and caused actions: %s" %(i[1],  i[2], i[0], i[3], i[4], str(i[5]))
-	
+
+def printMachineLog(mach, input='', trial=getLatestTrial()):
+	data = loadLogFile('state', trial)
+	for i in data:
+		if i[1] == mach:
+			if input == '':
+				print "Time Stamp: %s | Input: %s | State: %s -> %s | Actions: %s" %(i[0], i[3], i[2], i[4], i[5])
+			elif input == i[3]:
+				print "Time Stamp: %s | State: %s -> %s | Actions: %s" %(i[0], i[2], i[4], i[5])
+			
 def getPName (playerList, p):
 	return playerList[p]['player']._name.getMessage()
 	
@@ -151,6 +160,33 @@ def playerAnimationPath (player, trial=getLatestTrial()):
 	#Play the animation path
 	path.play()
 
+#############################################
+### GETTING DATA FOR STATISTICAL ANALYSIS ###
+
+def getMachineInteractions (act, trial=getLatestTrial()):
+	data = loadLogFile('user', trial)
+	# Output log in readable format: i[0]->time, i[1]->player, i[2]->name, i[3]->machine, i[4]->input, i[5]->actions
+	data.sort(key=lambda tup: tup[0])
+	actions = {}
+	for a in data:
+		if (len(a[5]) > 0) == act:	#True for actions, False for errors
+			actions.setdefault(a[1], 0)
+			actions[a[1]] += 1
+			if act and 'enable' in a[5][0]:	#don't count the 'enable' actions
+				actions[a[1]] -= 1
+	print actions
+
+def getMachineProximity (trial=getLatestTrial()):
+	data = loadLogFile('proximity', trial)
+	# Output log in readable format: i[0]->time, i[1]->player, i[2]->machine, i[3]->enter/exit)
+	data.sort(key=lambda tup: tup[1])	#sort by player
+	stations = {}
+	for p in data:
+		if p[3] > 0:	#count only when entering a machine area
+			stations.setdefault(p[1], 0)
+			stations[p[1]] += 1
+	print stations
+			
 if __name__ == '__main__':
 	
 	viz.go()

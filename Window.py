@@ -270,7 +270,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self.SOUNDS['victory'].play()
 		
 	def ConvertTime(self, time):
-		time = round(time, 2)
+		time = round(time-sgetGameLoadingTime(False), 2)
 		mins = int(time/60)
 		secs = int(time%60)
 		return str(mins)+'\''+str(secs)+'\'\''

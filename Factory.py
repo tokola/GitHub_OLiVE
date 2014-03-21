@@ -336,8 +336,8 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-	machines = ('wheelBarrow') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
-#	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
+#	machines = ('wheelBarrow', 'lavalL', 'pumpL') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
+	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
 	oliveFactory = Factory()
 	oliveFactory.AddMachinery(machines)
 	oliveFactory.AddAllTools()
