@@ -327,6 +327,8 @@ class FSM_Actions ():
 				viz.starttimer(803, delay[0], 0)
 			elif action == 'finishing_game':
 				self._mapWin.GameFinish(delay[0])
+			elif action == 'save_data':
+				viz.starttimer(2000, 0, 0)
 			
 			####### WATER PIPE ACTIONS [PRACTICE] ######
 			elif 'detaching_pipe' in action:

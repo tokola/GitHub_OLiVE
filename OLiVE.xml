@@ -11,6 +11,21 @@
 </OPTIONS>
 <RESOURCES>
 <RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\__init__.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\biffh.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\book.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
 <FILENAME>&lt;VIZARD&gt;resources\button_down_blue.gif</FILENAME>
 <VIRTUAL_PATH>&lt;VIZARD&gt;resources\</VIRTUAL_PATH>
 <TYPE>2</TYPE>
@@ -23,13 +38,58 @@
 <PROTECT>1</PROTECT>
 </RESOURCE>
 <RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\compdoc.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\formatting.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\formula.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\info.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\study\last_trial</FILENAME>
 <VIRTUAL_PATH>&lt;SCRIPT&gt;study\</VIRTUAL_PATH>
 <TYPE>2</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\OLiVE_StateMachine.xlsx</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\licences.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\sheet.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\timemachine.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\xldate.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\examples\xlrdnameAPIdemo.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\examples\</VIRTUAL_PATH>
+<TYPE>2</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\xlsx.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\site-packages\xlrd\</VIRTUAL_PATH>
 <TYPE>2</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -38,13 +98,13 @@
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>&lt;VIZARD&gt;bin\lib\xml\__init__.py</FILENAME>
-<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\xml\</VIRTUAL_PATH>
+<FILENAME>&lt;VIZARD&gt;bin\lib\xml\etree\__init__.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\xml\etree\</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>&lt;VIZARD&gt;bin\lib\xml\etree\__init__.py</FILENAME>
-<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\xml\etree\</VIRTUAL_PATH>
+<FILENAME>&lt;VIZARD&gt;bin\lib\xml\__init__.py</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\xml\</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -84,7 +144,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Avatar.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -154,7 +214,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Factory.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -174,7 +234,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\FSM_Actions.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -204,7 +264,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Interaction.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -234,17 +294,17 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\LogParser.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\LowPassDynamicFilter.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Machinery.pyc</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -254,7 +314,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\OLiVE.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -273,11 +333,6 @@
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>&lt;VIZARD&gt;bin\lib\posixpath.py</FILENAME>
-<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\</VIRTUAL_PATH>
-<TYPE>1</TYPE>
-</RESOURCE>
-<RESOURCE>
 <FILENAME>&lt;VIZARD&gt;bin\lib\pprint.py</FILENAME>
 <VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\</VIRTUAL_PATH>
 <TYPE>1</TYPE>
@@ -288,18 +343,13 @@
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>&lt;VIZARD&gt;bin\lib\encodings\raw_unicode_escape.py</FILENAME>
-<VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\encodings\</VIRTUAL_PATH>
-<TYPE>1</TYPE>
-</RESOURCE>
-<RESOURCE>
 <FILENAME>&lt;VIZARD&gt;bin\lib\re.pyc</FILENAME>
 <VIRTUAL_PATH>&lt;VIZARD&gt;bin\lib\</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Robot.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -344,7 +394,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\StateMachine.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -399,7 +449,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Vector3.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -464,7 +514,7 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>D:\Virginia Tech\2. Research\C-OLiVE\Window.py</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>1</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -493,33 +543,23 @@
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avcodec-lav-54.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avcodec-lav-55.dll</FILENAME>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avfilter-lav-3.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
-<TYPE>0</TYPE>
-</RESOURCE>
-<RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avformat-lav-54.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
-<TYPE>0</TYPE>
-</RESOURCE>
-<RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avresample-lav-1.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avformat-lav-55.dll</FILENAME>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
 <FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\avutil-lav-52.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
 <FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\ffdshow\ffdshow.ax</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -528,23 +568,13 @@
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\LAVAudio.ax</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
-<TYPE>0</TYPE>
-</RESOURCE>
-<RESOURCE>
 <FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\LAVSplitter.ax</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
-<TYPE>0</TYPE>
-</RESOURCE>
-<RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\LAVVideo.ax</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
 <FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\libbluray.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
@@ -609,6 +639,11 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>&lt;VIZARD&gt;bin\osgPlugins-2.9.12\osgdb_png.dll</FILENAME>
+<VIRTUAL_PATH>&lt;VIZARD&gt;bin\osgPlugins-2.9.12\</VIRTUAL_PATH>
+<TYPE>0</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>&lt;VIZARD&gt;bin\osgPlugins-2.9.12\osgdb_rgb.dll</FILENAME>
 <VIRTUAL_PATH>&lt;VIZARD&gt;bin\osgPlugins-2.9.12\</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
@@ -683,11 +718,6 @@
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>
-<FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\LAV\swscale-lav-2.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
-<TYPE>0</TYPE>
-</RESOURCE>
-<RESOURCE>
 <FILENAME>&lt;VIZARD&gt;bin\DLLs\transform.pyd</FILENAME>
 <VIRTUAL_PATH>&lt;VIZARD&gt;bin\DLLs\</VIRTUAL_PATH>
 <TYPE>0</TYPE>
@@ -709,7 +739,12 @@
 </RESOURCE>
 <RESOURCE>
 <FILENAME>C:\Program Files (x86)\K-Lite Codec Pack\Filters\vsfilter.dll</FILENAME>
-<VIRTUAL_PATH>&lt;SCRIPT&gt;\</VIRTUAL_PATH>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
+<TYPE>0</TYPE>
+</RESOURCE>
+<RESOURCE>
+<FILENAME>C:\Program Files (x86)\Dictionaries Explorer II\WHook.dll</FILENAME>
+<VIRTUAL_PATH>&lt;SCRIPT&gt;</VIRTUAL_PATH>
 <TYPE>0</TYPE>
 </RESOURCE>
 <RESOURCE>

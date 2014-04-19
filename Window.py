@@ -16,6 +16,10 @@ from LogParser import sgetGameLoadingTime
 
 GRABDIST = 2	# The threashold for grabbing/interacting with items
 
+# Add sounds path to resource path, before loading the sounds
+if viz.res.getPublishedPath():
+	viz.res.addPath(viz.res.getPublishedPath()+'sounds\\')
+	
 class PlayerView(FSM_Actions.FSM_Actions):
 	"""This is the class for making a new view"""
 	
@@ -24,7 +28,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			  'alert':viz.addAudio('sounds/alert.wav'), 'oil':viz.addAudio('sounds/oil_counter.wav'),
 			  'victory':viz.addAudio('sounds/victory.wav')}
 	
-	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, data=None, sm=None, fmap=None):
+	def __init__(self, view=None, win=None, winPos=[], player=None, fact=None, data=None, sm=None, fmap=None, lang=None):
 		if view == None:
 			view = viz.addView()
 		self._view = view
@@ -37,6 +41,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._window.setView(self._view)
 		self._size = self._window.getSize(viz.WINDOW_ORTHO)
 		self._player = player
+		self.LoadToolTips(lang)
 		#check if this is a player window
 		if player in [1,2,3]:
 			self.PLAYERS[player] = self	#list of all player instances (used by FSM_Actions)
@@ -46,7 +51,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._view.collisionBuffer(0.25)
 			self._view.getHeadLight().disable()
 			self._window.clearcolor(viz.SKYBLUE)
-			self.AddPanel()
+			self.AddPanel(lang)
 			#reset other variables
 			self._toolbox = OrderedDict()
 			self._selected = None	#object name being currently held/selected
@@ -66,7 +71,6 @@ class PlayerView(FSM_Actions.FSM_Actions):
 			self._proxLog = []		#for logging proximity to machines (enter, exit)
 			self._pLog = []			#for logging position data
 			self._collabAction = ''	#stores the collab action in 1P mode
-			self.LoadToolTips()
 			#set an update function to take care of window resizing (priority=0)
 			self._updateFunc = vizact.onupdate(0, self.Update)
 			#FSM_Actions.FSM_Actions.__init__(self)
@@ -149,7 +153,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._alertThemes['w'].borderColor = (.5,0,0,1)
 		self._alertPanel.setPanelVisible(0)
 		#add the info messages panel
-		self._infoPanel = vizinfo.InfoPanel('Welcome to the Olive Oil Production Factory', window=self._window, align=viz.ALIGN_LEFT_TOP)
+		self._infoPanel = vizinfo.InfoPanel(self.tooltips['welcome'], window=self._window, align=viz.ALIGN_LEFT_TOP)
 		self._infoPanel.getPanel().fontSize(14)
 		self._infoPanel.getPanel().setCellPadding(5)
 		self._infoPanel.getPanel().setMargin(1)
@@ -163,14 +167,14 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._newScore = None	#holds the temp score after each update
 		self._scorePanel = vizdlg.GridPanel(window=self._window, skin=vizdlg.ModernSkin, 
 					spacing=-10, align=vizdlg.ALIGN_RIGHT_TOP, margin=0)
-		row1text = viz.addText('Points')
+		row1text = viz.addText(self.tooltips['points'])
 		row1text.font("Segoe UI")
 		self._scoreIcon = viz.addTexQuad(size=25, texture=viz.add('textures/star_yellow_256.png'))
 		self._score= viz.addText('000')
 		self._score.font("Segoe UI")
 		self._score.alignment(viz.ALIGN_RIGHT_BASE)
 		self._scorePanel.addRow([self._scoreIcon, row1text, self._score])
-		row2text = viz.addText('Olive Oil (lbs)   ')
+		row2text = viz.addText(self.tooltips['oil'])
 		row2text.font("Segoe UI")
 		self._oilIcon = viz.addTexQuad(size=25, texture=viz.add('textures/oil_icon.png'))
 		self._oil= viz.addText('000')
@@ -186,7 +190,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		try:
 			self._total.alignment(viz.ALIGN_RIGHT_BASE)
 		except:
-			row3text = viz.addText('Score')
+			row3text = viz.addText(self.tooltips['score'])
 			row3text.font("Segoe UI")
 			row3icon = viz.addTexQuad(size=25, texture=viz.add('textures/total_icon.png'))
 			self._total= viz.addText('000')
@@ -236,20 +240,20 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._newScore = None
 	
 	def GameFinish (self, delay):
-		self.info = vizinfo.add('Congratulations!')
+		self.info = vizinfo.add(self.tooltips['congrats'])
 		self.info.visible(0)
 		self.info.icon(viz.add('textures/c-olive_icon.png'))
-		self.info.add(viz.TEXT3D, 'You have finished the game \nproducing %s lbs of olive oil. \n' % self._oil.getMessage())
-		self.info.add(viz.TEXT3D, 'Your team statistics are:')
+		self.info.add(viz.TEXT3D, self.tooltips['finish']+'\n'+self.tooltips['produce'] % self._oil.getMessage())
+		self.info.add(viz.TEXT3D, self.tooltips['stats'])
 		self.info.translate(0.1,0.95)
 		self.info.alignment(vizinfo.UPPER_LEFT)
 		self.info.scale(2.4,2.6)
 		self.info.messagecolor(100,100,0)
 		self.info.bgcolor(viz.BLACK, 0.8)
 		self.info.bordercolor([100,100,0], .9)
-		points = self.info.add(viz.TEXQUAD, 'Score: %s' % self._total.getMessage())
+		points = self.info.add(viz.TEXQUAD, self.tooltips['score']+': %s' % self._total.getMessage())
 		points.texture(viz.add('textures/total_icon.png'))
-		time = self.info.add(viz.TEXQUAD, 'Time taken: %s' % self.ConvertTime(viz.tick()))
+		time = self.info.add(viz.TEXQUAD, self.tooltips['time']+': %s' % self.ConvertTime(viz.tick()))
 		time.texture(viz.add('textures/time_icon.png'))
 		self.info.shrink()
 		#hide all other panels
@@ -404,7 +408,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	##############################
 	### FOR THE PLAYER WINDOWS ###
 	
-	def AddPanel(self):
+	def AddPanel(self, langu):
 		self._hud = viz.addGroup(viz.ORTHO, scene=self._window)
 		panel = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=200)
 		panel.texture(viz.addTexture('textures/panel.png', useCache = True))
@@ -433,7 +437,7 @@ class PlayerView(FSM_Actions.FSM_Actions):
 		self._message.setPosition(-80,32,0)
 		self._message.setParent(self._hud)
 		#add the collab icon
-		self._collabTextures = [viz.add('textures/collab0.png'), viz.add('textures/collab1.png')]
+		self._collabTextures = [viz.add('textures/signs'+langu+'/collab0.png'), viz.add('textures/signs'+langu+'/collab1.png')]
 		self._collabIcon = viz.addTexQuad(parent=viz.ORTHO, scene=self._window, size=150)
 		self._collabIcon.texture(self._collabTextures[0])
 		self._collabIcon.setParent(self._hud)
@@ -768,10 +772,11 @@ class PlayerView(FSM_Actions.FSM_Actions):
 	def DisablePlayer1ForMultiInput (self):
 		self._collabAction = ''
 	
-	def LoadToolTips (self):	#load tool explanations from an external file
+	def LoadToolTips (self, language):	#load tool explanations from an external file
 		import xlrd	#load the library for reading Excel files
 		self.tooltips = {}
-		workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
+		filename = viz.res.getPublishedPath('OLiVE_StateMachine'+language+'.xlsx')
+		workbook = xlrd.open_workbook(filename)
 		#Get the first sheet in the workbook by name
 		sheet1 = workbook.sheet_by_name('tools')
 		for rowNumber in range(sheet1.nrows):

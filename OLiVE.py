@@ -16,7 +16,7 @@ import StateMachine
 import LogParser
 
 #viz.setMultiSample(4)
-viz.go(viz.FULLSCREEN)
+viz.go() #viz.FULLSCREEN)
 
 viz.phys.enable()
 
@@ -32,13 +32,16 @@ MACHINERY = {0: ('waterPipe', 'wheelBarrow'),
 			 5: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')}
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
+LANG = 'GR'
 
 #############################################################
 ### LOAD DEPENDENCIES FROM DISK AND CREATE PERSISTENT EXE ###
 
 # Add publish EXE path to resource path
 if viz.res.getPublishedPath():
-    viz.res.addPath(viz.res.getPublishedPath())
+	viz.res.addPath(viz.res.getPublishedPath())
+	viz.res.addPath(viz.res.getPublishedPath()+'sounds\\')
+	print viz.res.getPathList()
 
 # Exclude all files containing...
 viz.res.addPublishFilter('*.jpg*')
@@ -50,13 +53,17 @@ viz.res.addPublishFilter('*.ive*')
 viz.res.addPublishFilter('*.osgb*')
 viz.res.addPublishFilter('*.wav*')
 viz.res.addPublishFilter('*.mov*')
-#viz.res.addPublishFilter('*.xlsx*')
+viz.res.addPublishFilter('*.xlsx*')
 viz.res.addPublishFilter('*.log*')
 viz.res.addPublishFileLoader('wav')
 viz.res.addPublishFileLoader('jpg')
 viz.res.addPublishFileLoader('wrl')
 viz.res.addPublishFileLoader('ive')
-#viz.res.addPublishFileLoader('xlsx')
+viz.res.addPublishFileLoader('serializers_osg')
+viz.res.addPublishFileLoader('osg')
+viz.res.addPublishFileLoader('rgb')
+viz.res.addPublishFileLoader('xlsx')
+viz.res.addPublishDirectory('C:/Program Files (x86)/WorldViz/Vizard4/bin/lib/site-packages/xlrd', pattern='*.py')
 
 # Setup persistent published EXE in AppData directory
 viz.setOption('viz.publish.persistent',1)
@@ -77,18 +84,18 @@ def splitViews ():
 	global olivePress, floorMap, playerByView
 	
 	# set the four different views in seperate windows (3 players and the map)
-	floorMap = Window.PlayerView(winPos=[0.5,1])
-	p1 = Window.PlayerView(view=viz.MainView, winPos=[0,1], player=1, data=gPlayerData[1], fact=olivePress, sm=FSM, fmap=floorMap)
+	floorMap = Window.PlayerView(winPos=[0.5,1], lang=LANG)
+	p1 = Window.PlayerView(view=viz.MainView, winPos=[0,1], player=1, data=gPlayerData[1], fact=olivePress, sm=FSM, fmap=floorMap, lang=LANG)
 	# assign the joystick to player 1
 	j1 = Interaction.Joystick(p1._window, p1, DEVICE)
 	# set the avatar for player 1
 	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'], EYEHEIGHT)
 	players = [[p1, j1, a1]]
 	if condition > 0:	#the 3P condition was chosen (condition=1)
-		p2 = Window.PlayerView(winPos=[0,.5], player=2, data=gPlayerData[2], fact=olivePress, sm=FSM, fmap=floorMap)
+		p2 = Window.PlayerView(winPos=[0,.5], player=2, data=gPlayerData[2], fact=olivePress, sm=FSM, fmap=floorMap, lang=LANG)
 		j2 = Interaction.Joystick(p2._window, p2, DEVICE)
 		a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
-		p3 = Window.PlayerView(winPos=[0.5,.5], player=3, data=gPlayerData[3], fact=olivePress, sm=FSM, fmap=floorMap)
+		p3 = Window.PlayerView(winPos=[0.5,.5], player=3, data=gPlayerData[3], fact=olivePress, sm=FSM, fmap=floorMap, lang=LANG)
 		j3 = Interaction.Joystick(p3._window, p3, DEVICE)
 		a3 = Avatar.Avatar(p3._view, gPlayerData[3]['colors'], EYEHEIGHT)
 		players.append([p2, j2, a2])
@@ -170,7 +177,8 @@ def loadMachFSM_Xl():
 	#load state machine from an external file
 	FSM = {}
 	STATES = {}
-	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
+	filename = viz.res.getPublishedPath('OLiVE_StateMachine'+LANG+'.xlsx')
+	workbook = xlrd.open_workbook(filename)
 	#Get the first sheet in the workbook by index
 	sheet1 = workbook.sheet_by_name('FSM'+str(trial))
 	r = 0
@@ -206,9 +214,9 @@ def loadFactFSM_Xl():
 	import xlrd	#load the library for reading Excel files
 	global FaSM, FaSTATES
 	#load state machine from an external file
-#	FaSM = StateMachine.StateMachine()
 	FaSTATES = {}
-	workbook = xlrd.open_workbook('OLiVE_StateMachine.xlsx')
+	filename = viz.res.getPublishedPath('OLiVE_StateMachine'+LANG+'.xlsx')
+	workbook = xlrd.open_workbook(filename)
 	#Get the first sheet in the workbook by index
 	sheet1 = workbook.sheet_by_name('FaSM'+str(trial))
 	r = 0
@@ -429,6 +437,11 @@ def timerExpire(id):
 	elif id == 1100:
 		if condition == 0:	#check if 1P condition
 			(actions, message) = ([], '')
+			
+	# TIMER FOR EXPIRATION FOR SAVING LOGGED DATA TO DISK
+	elif id == 2000:
+		SaveLoggedData()
+		(actions, message) = ([], '')
 		
 	#tell player 1 to broadcast messages and actions
 	gPlayers[pl]['player'].BroadcastActionsMessages(actions, message)
@@ -460,7 +473,7 @@ def initialize ():
 	except:
 		pass
 	#add the factory
-	olivePress = Factory.Factory()
+	olivePress = Factory.Factory(LANG)
 	#load the state machine files
 	loadMachFSM_Xl()
 	loadFactFSM_Xl()
@@ -486,10 +499,20 @@ def onInit():
 viz.callback(viz.INIT_EVENT, onInit) 
 
 def onExit():
-#	vizinput.message('Thank you for playing the Olive Oil Game!!!')
+	global gLogSaved
+	if studyMode and trial:	#log data only for main trial
+		try:
+			gLogSaved
+		except:
+			SaveLoggedData()
+		vizinput.message('Thank you for playing the Olive Oil Game!!!')
+	
+def SaveLoggedData():
+	global gLogSaved
 	if studyMode and trial:	#log data only for main trial
 		try:
 			LogParser.storeLogData(FSM, gPlayers, condition, group)
+			gLogSaved = True
 		except:
 			print "Finite State Machine not loaded!"
 			

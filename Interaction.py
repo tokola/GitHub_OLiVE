@@ -30,14 +30,14 @@ class Joystick(viz.EventClass):
         if 'Rumblepad' in self.joystick.getName():
             self.device = 'RUMBLEPAD'
             self.actions = {'prev':[1,5], 'next':[3,6], 'pick':[2, 7, 8, 11, 12], 'drop':4, 'hud':9}
-        elif 'Xbox' in self.joystick.getName():
+        elif 'XBOX' in self.joystick.getName().upper():
             self.device = 'XBOX'
             self.actions = {'prev':[3], 'next':[2], 'pick':[1, 9, 10, 5, 6], 'drop':4, 'hud':7}
             self.triggerActive = True   #False after trigger buttons are pressed
             #Create a callback to handle the expiring trigger (de)activation events
             self.callback(viz.TIMER_EVENT, self.timerExpire)
         else:
-            self.device = 'XBOX'
+            self.device = 'Unknown'
             print "UNIDENTIFIED JOYSTICK"
         
     def UpdateJoystick(self):

@@ -14,7 +14,7 @@ class Factory ():
 	
 	#factory = viz.add('models/factory.osgb')
 	
-	def __init__ (self):
+	def __init__ (self, lang):
 		self.factory = viz.add('models/factory.osgb')
 		# list of tools with position, orientation data and boolean for physics enabled or not
 		self.toolsData = {'wrench': [[16.75,1.5,4.8],[30,0,0], True], 'shovel': [[15,0.5,7.55],[0,-80,0],False], 
@@ -32,6 +32,7 @@ class Factory ():
 		self.tools = {}
 		self.started = False
 		self._canCond = False	#False-> empty can | True-> full can
+		self.lang = lang
 		self.AddLights()
 		
 	def AddLights (self):
@@ -42,6 +43,8 @@ class Factory ():
 		light1 = self.AddLight([14.5, 7, 3], viz.WHITE, viz.WHITE,0)	#warehouse
 		
 	def AddMachinery(self, args):
+		lang = self.lang
+		
 		if 'engine' in args:	#ADD THE ENGINE
 			self.engine = Machinery.Engine(self.factory, [0.58, .6, 2.97], [-90,0,0])
 			self.machines['engine'] = self.engine
@@ -53,13 +56,13 @@ class Factory ():
 			belt_engine.setEuler(0,27.1,0)
 			self.belts['engine'] = Machinery.Belt(belt_engine)
 			signE = self.factory.add('models/objects/sign.ive', euler=[-90,0,0],
-			         texture=viz.addTexture('textures/sign_engine.png'), pos=[-.45,2.5,0])
+			         texture=viz.addTexture('textures/signs'+lang+'/sign_engine.png'), pos=[-.45,2.5,0])
 			
 		if 'boiler' in args:	#ADD THE BOILER
 			self.boiler = Machinery.Boiler(self.factory, [7.1,0,0])
 			self.machines['boiler'] = self.boiler
 			signB = self.factory.add('models/objects/sign.ive',
-			         texture=viz.addTexture('textures/sign_boiler.png'), pos=[5.8,2.2,0.02])
+			         texture=viz.addTexture('textures/signs'+lang+'/sign_boiler.png'), pos=[5.8,2.2,0.02])
 	
 		if 'millL' in args:		# ADD THE LEFT MILL
 			self.millL = Machinery.Mill(self.factory, [-24.7,0,6.5], [0,0,0], 'L')
@@ -76,7 +79,7 @@ class Factory ():
 			gear_millL.center(0,0,13.953)
 			self.wheels['millL'].append(gear_millL)
 			signM1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY, 
-			         texture=viz.addTexture('textures/sign_mill1.png'), pos=[-23.6,2.5,7.78])
+			         texture=viz.addTexture('textures/signs'+lang+'/sign_mill1.png'), pos=[-23.6,2.5,7.78])
 		if 'millR' in args:		# ADD THE RIGHT MILL
 			self.millR = Machinery.Mill(self.factory, [-3.7,0,6.5], [45,0,0], 'R')
 			self.machines['millR'] = self.millR
@@ -92,7 +95,7 @@ class Factory ():
 			gear_millR.center(0,0,13.953)
 			self.wheels['millR'].append(gear_millR)
 			signM2 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-				pos=[-5,2.5,7.78], texture=viz.addTexture('textures/sign_mill2.png'))
+				pos=[-5,2.5,7.78], texture=viz.addTexture('textures/signs'+lang+'/sign_mill2.png'))
 
 		if 'pumpR' in args:		#ADD THE RIGHT PUMP
 			self.pumpR = Machinery.Pump(self.factory, [-17,2.6,-6.5], [-90,0,0], 'R', self)
@@ -106,7 +109,7 @@ class Factory ():
 			self.wheels['pumpR'] = [wheel_pumpR]
 			self.belts['pumpR']  = Machinery.Belt(belt_pumpR)
 			signU2 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-				pos=[-17.5,3,-7.85], euler=[180,0,0], texture=viz.addTexture('textures/sign_pump2.png'))
+				pos=[-17.5,3,-7.85], euler=[180,0,0], texture=viz.addTexture('textures/signs'+lang+'/sign_pump2.png'))
 		if 'pumpL' in args:		#ADD THE LEFT PUMP
 			self.pumpL = Machinery.Pump(self.factory, [-20.3,2.6,-6.5], [-90,0,0], 'L', self)
 			self.machines['pumpL'] = self.pumpL
@@ -119,18 +122,18 @@ class Factory ():
 			self.wheels['pumpL'] = [wheel_pumpL]
 			self.belts['pumpL']  = Machinery.Belt(belt_pumpL)
 			signU1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-				pos=[-20.8,3,-7.85], euler=[180,0,0], texture=viz.addTexture('textures/sign_pump1.png'))
+				pos=[-20.8,3,-7.85], euler=[180,0,0], texture=viz.addTexture('textures/signs'+lang+'/sign_pump1.png'))
 				
 		if 'pressL' in args:	#ADD THE 2 PRESSES
 			self.pressL = Machinery.Press(self.factory, [-17.4,0,6.5], [180,0,0], 'L')
 			self.machines['pressL'] = self.pressL
 			signP1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-			              pos=[-17.4,2.5,7.78], texture=viz.addTexture('textures/sign_press1.png'))
+			              pos=[-17.4,2.5,7.78], texture=viz.addTexture('textures/signs'+lang+'/sign_press1.png'))
 		if 'pressR' in args:
 			self.pressR = Machinery.Press(self.factory, [-14.1,0,6.5], [180,0,0], 'R')
 			self.machines['pressR'] = self.pressR
 			signP2 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-			              pos=[-14.1,2.5,7.78], texture=viz.addTexture('textures/sign_press2.png'))
+			              pos=[-14.1,2.5,7.78], texture=viz.addTexture('textures/signs'+lang+'/sign_press2.png'))
 	
 		if 'loader' in args:	#ADD THE LOADING TABLE
 			self.loader = Machinery.Loader(self, self.factory, [-16.58,0,1.8], [180,0,0])
@@ -142,12 +145,12 @@ class Factory ():
 			self.lavalR = Machinery.Laval(self.factory, [-7.8,0,-5], [180,0,0], 'R', self)
 			self.machines['lavalR'] = self.lavalR
 			signL2 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-					pos=[-7.6,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval2.png'))
+					pos=[-7.6,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/signs'+lang+'/sign_laval2.png'))
 		if 'lavalL' in args:
 			self.lavalL = Machinery.Laval(self.factory, [-10,0,-5], [180,0,0], 'L', self)
 			self.machines['lavalL'] = self.lavalL
 			signL1 = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-					pos=[-10.37,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/sign_laval1.png'))
+					pos=[-10.37,2.3,-6.23], euler=[180,0,0], texture=viz.addTexture('textures/signs'+lang+'/sign_laval1.png'))
 		
 		if 'lavalL' in args or 'lavalR' in args:
 			# wheels and belts for the laval sub-system
@@ -168,7 +171,7 @@ class Factory ():
 			self.pipe.setPosition(-6.02,.26,-6.032)
 			self.pipe.setEuler([180,0,0])
 			self.signO = self.factory.add('models/objects/sign.ive', cache=viz.CACHE_COPY,
-					pos=[-5.6,.95,-7.19], euler=[180,13,0], texture=viz.addTexture('textures/sign_oilPump.png'))
+					pos=[-5.6,.95,-7.19], euler=[180,13,0], texture=viz.addTexture('textures/signs'+lang+'/sign_oilPump.png'))
 			
 		if 'scale' in args:
 			self.scale = Machinery.Scale(self.factory, [-3.02,0,-6.5], [180,0,0])
