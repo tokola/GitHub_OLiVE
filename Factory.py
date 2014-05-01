@@ -175,6 +175,7 @@ class Factory ():
 			
 		if 'scale' in args:
 			self.scale = Machinery.Scale(self.factory, [-3.02,0,-6.5], [180,0,0])
+			self.scale.object.getChild('ID43').texture(viz.addTexture('models/images/scaledegree'+lang+'.tga'))
 			self.machines['scale'] = self.scale
 			
 		if 'waterPipe' in args:
@@ -339,9 +340,9 @@ if __name__ == '__main__':
 	viz.clearcolor(viz.SKYBLUE)
 	viz.MainView.getHeadLight().disable()
 	
-#	machines = ('wheelBarrow', 'lavalL', 'pumpL') #, 'millL', 'pressR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'scale')
-	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
-	oliveFactory = Factory()
+	machines = ('scale')
+#	machines = ('millR', 'millL', 'pressL', 'pressR', 'pumpL', 'pumpR', 'loader', 'lavalL', 'lavalR', 'oilPump', 'engine', 'boiler', 'scale')
+	oliveFactory = Factory('GR')
 	oliveFactory.AddMachinery(machines)
 	oliveFactory.AddAllTools()
 #	oliveFactory.AddOtherStuff()

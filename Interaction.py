@@ -1,6 +1,7 @@
 ﻿import viz
 import vizact
 import vizjoy
+import vizinput
 import math
 from LowPassDynamicFilter import LowPassDynamicFilter
 from Vector3 import Vector3
@@ -37,8 +38,8 @@ class Joystick(viz.EventClass):
             #Create a callback to handle the expiring trigger (de)activation events
             self.callback(viz.TIMER_EVENT, self.timerExpire)
         else:
-            self.device = 'Unknown'
-            print "UNIDENTIFIED JOYSTICK"
+            self.device = 'XBOX'
+            vizinput.message('Joystick not detected! Xbox will be used instead with limited functionality.')
         
     def UpdateJoystick(self):
         #Get the joystick position

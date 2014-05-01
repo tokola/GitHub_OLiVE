@@ -1080,9 +1080,9 @@ class Scale ():
 		#this is called by the AddProximitySensors() of the main module
 		self.proximityData = (vizproximity.RectangleArea([2.5,2.5]), self.object)
 		
-	def WeighPitcher (self, duration, amount):
+	def WeighPitcher (self, duration, amount, factor):
 		self.base.addAction(vizact.move(0,-0.01,0, time=duration))
-		angle = amount * 0.6
+		angle = amount * factor / 10	#divide by 10 to get the factor (float) from the integer
 		self.needle.addAction(vizact.spin(0,120,0, speed=angle/duration, dur=duration))
 		
 	def Start (self):

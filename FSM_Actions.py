@@ -320,7 +320,7 @@ class FSM_Actions ():
 			elif action == 'pitcher_on_scale':	#called from the lavals
 				viz.starttimer(801, 1, 0)
 			elif action == 'weighing_pitcher':	#increase counter by delay[1] lbs in delay[0] secs
-				self._factory.scale.WeighPitcher(delay[0], delay[1])
+				self._factory.scale.WeighPitcher(delay[0], delay[1], delay[2])
 			elif 'timerS' in action:
 				viz.starttimer(802, delay[0], 0)
 			elif action == 'finishing_production':

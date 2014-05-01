@@ -16,14 +16,16 @@ import StateMachine
 import LogParser
 
 #viz.setMultiSample(4)
-viz.go() #viz.FULLSCREEN)
+viz.go(viz.FULLSCREEN)
 
 viz.phys.enable()
+
+#viz.setLogFile('output.log')
 
 ### STUDY VARIABLES ###
 
 studyMode = 1	#set True for experiment
-CONDITION = 1	#0->1P, 1->3P
+CONDITION = 1	#0->'1P', 1->'3P', 2->'F'
 TRIAL = 5		#0->practice, 1->trial, 5->test (studyMode=0)
 
 ### GAME VARIABLES ###
@@ -63,7 +65,7 @@ viz.res.addPublishFileLoader('serializers_osg')
 viz.res.addPublishFileLoader('osg')
 viz.res.addPublishFileLoader('rgb')
 viz.res.addPublishFileLoader('xlsx')
-viz.res.addPublishDirectory('C:/Program Files (x86)/WorldViz/Vizard4/bin/lib/site-packages/xlrd', pattern='*.py')
+#viz.res.addPublishDirectory('C:/Program Files (x86)/WorldViz/Vizard4/bin/lib/site-packages/xlrd', pattern='*.py')
 
 # Setup persistent published EXE in AppData directory
 viz.setOption('viz.publish.persistent',1)
@@ -91,7 +93,7 @@ def splitViews ():
 	# set the avatar for player 1
 	a1 = Avatar.Avatar(p1._view, gPlayerData[1]['colors'], EYEHEIGHT)
 	players = [[p1, j1, a1]]
-	if condition > 0:	#the 3P condition was chosen (condition=1)
+	if condition%2 > 0:	#the 3P condition was chosen (condition=1)
 		p2 = Window.PlayerView(winPos=[0,.5], player=2, data=gPlayerData[2], fact=olivePress, sm=FSM, fmap=floorMap, lang=LANG)
 		j2 = Interaction.Joystick(p2._window, p2, DEVICE)
 		a2 = Avatar.Avatar(p2._view, gPlayerData[2]['colors'], EYEHEIGHT)
@@ -116,6 +118,13 @@ def splitViews ():
 	
 vizact.onkeydown('v', splitViews)
 
+## WHEN ONE OF THE PLAYERS GETS STUCK ##
+def collisionTempDeactivate():
+	keys = [viz.KEY_KP_1, viz.KEY_KP_2, viz.KEY_KP_1]
+	for p in gPlayers.keys():
+		vizact.onkeydown(keys[p-1], gPlayers[p]['player']._view.collision, 0)
+		vizact.onkeyup(keys[p-1], gPlayers[p]['player']._view.collision, 1)
+		
 def checkCollabActivity ():
 	pickingObjs = {}
 	for p in gPlayers.values():
@@ -204,6 +213,7 @@ def loadMachFSM_Xl():
 		if stateData[3] == '':
 			stateData[3] = None
 		inputs = dict(next=stateData[3], output=stateData[4].split('; '), info=stateData[5].split(' $ '))
+		#delete empty output or info entries
 		if inputs['output'] == ['']: 
 			del inputs['output'][0]
 		if inputs['info'] == ['']: 
@@ -435,7 +445,7 @@ def timerExpire(id):
 		
 	# TIMER FOR EXPIRATION FOR ENABLING PLAYER 1 TO EXECUTE MULTI-INPUT ACTION
 	elif id == 1100:
-		if condition == 0:	#check if 1P condition
+		if condition%2 == 0:	#check if 1P or Facilitated condition
 			(actions, message) = ([], '')
 			
 	# TIMER FOR EXPIRATION FOR SAVING LOGGED DATA TO DISK
@@ -466,7 +476,7 @@ def initialize ():
 	
 	#remove input panel and store player names
 	try:
-		for p in range(condition*2+1):
+		for p in range(condition%2*2+1):
 			if names[p].getMessage() != '':
 				gPlayerData[p+1]['name'] = names[p].getMessage()
 		inputPanel.remove()
@@ -483,6 +493,8 @@ def initialize ():
 	olivePress.AddOtherStuff()
 	#split the views according to players
 	splitViews()
+	#define the key events for deactivating collision (if players get stuck)
+	collisionTempDeactivate()
 	#set the time passed before game starts
 	LogParser.sgetGameLoadingTime(True)
 	AddProximitySensors()
@@ -503,7 +515,8 @@ def onExit():
 	if studyMode and trial:	#log data only for main trial
 		try:
 			gLogSaved
-		except:
+		except NameError:
+			print "SAVING data on exit!"
 			SaveLoggedData()
 		vizinput.message('Thank you for playing the Olive Oil Game!!!')
 	
@@ -512,12 +525,13 @@ def SaveLoggedData():
 	if studyMode and trial:	#log data only for main trial
 		try:
 			LogParser.storeLogData(FSM, gPlayers, condition, group)
+			print "LOG DATA SAVED!"
 			gLogSaved = True
 		except:
 			print "Finite State Machine not loaded!"
 			
 viz.callback(viz.EXIT_EVENT, onExit) 
-	
+
 #####################################
 ## EXPERIMENT CONDITIONS AND INPUT ##
 #####################################
@@ -528,14 +542,15 @@ def displayInputPanel():
 	inputPanel = viz.addGUIGroup()
 #	endG = viz.addGroup(viz.SCREEN)
 	splashScreen = viz.addTexQuad(parent=viz.SCREEN,pos=[0.5,0.5,0],scale=[13,10.5,1])
-	splashScreen.texture(viz.addTexture('textures/splash_screen.jpg'))
+	splashScreen.texture(viz.addTexture('textures/splash_screen'+LANG+'.jpg'))
 	splashScreen.setParent(inputPanel)
 	names = []
-	pl = range(condition*2+1)
+	pl = range(condition%2*2+1)
 	pl.reverse()
 	for i,p in enumerate(pl):
 		name = viz.addTextbox()
-		title = viz.addText('Player %s name:'%str(i+1), viz.SCREEN)
+		nameText = {'':'Player %s name:', 'GR':'Όνομα παίκτη %s:'}
+		title = viz.addText(nameText[LANG]%str(i+1), viz.SCREEN)
 		title.fontSize(24)
 		title.addParent(inputPanel)
 		title.setPosition([.4, .53+.1*p, 0])
@@ -549,14 +564,14 @@ def displayInputPanel():
 	
 if studyMode:
 	trial = viz.choose('Choose practice or main trial:',['practice', 'trial'])
-	condition = viz.choose('Choose study condition:',['1P', '3P'])
+	condition = viz.choose('Choose study condition:',['1P', '3P', 'Facilitated'])
 	if trial:
 		group = viz.input('Choose group number:', '')
 		displayInputPanel()
 	else:
 		initialize() 
 else:
-	condition = CONDITION	#0->'1P', 1->'3P'
+	condition = CONDITION	#0->'1P', 1->'3P', 2->'F' 
 	trial = TRIAL			#1->full factory & logging, 0->practice
 	initialize()
 	
@@ -568,3 +583,14 @@ def sendEventToMachine (mach, action):
 def changeFSMState (mach, newState):
 	FSM[mach].set_start(newState)
 	sendEventToMachine(mach, 'entry')
+	
+def testScale():
+	floorMap.ShowTotalScore()
+	changeFSMState('scale', 'scale/weighing')
+	sendEventToMachine('scale', 'weigh-pitcher')
+	
+def loadSmoke():
+	viz.add('models/objects/smoke_trail.osg')
+	
+vizact.onkeydown('t', testScale)
+vizact.onkeydown('y', loadSmoke)

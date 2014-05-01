@@ -52,14 +52,14 @@ def storeLogData (FSM, players, cond, gr):
 	
 def saveLogFile(kind, content, condi, group):
 	#stamp = str(datetime.date.today().month)+'.'+str(datetime.date.today().day)
-	folder = 'Trial'+chr(66+condi)+str(group)
+	folder = 'Trial'+chr(66+condi*condi)+str(group)	#(0)1P->B, (1)3P->C, (2)F->F
 	d = os.path.dirname(viz.res.getPublishedPath()+'study/'+folder+'/')
 	if not os.path.exists(d):
 		os.makedirs(d)
 	file = open(viz.res.getPublishedPath()+'study/'+folder+'/log_'+kind, 'w')
 	pickle.dump(content, file)
 	file.close()
-	saveLastTrial(chr(66+condi)+str(group))
+	saveLastTrial(chr(66+condi*condi)+str(group))
 
 def saveLastTrial(trial):	#store the code of the latest trial
 	file = open(viz.res.getPublishedPath()+'study/last_trial', 'w')
@@ -151,7 +151,7 @@ def playerAnimationPath (player, trial=getLatestTrial()):
 	for x,pos in enumerate(positions):
 		path.addControlPoint(x+1,pos=pos)
 	#Set the initial loop mode to circular
-	path.setLoopMode(viz.LOOP)
+#	path.setLoopMode(viz.LOOP)
 	#Automatically rotate the path to face trajectory
 	path.setAutoRotate(viz.ON)
 	path.setRotateMode(viz.BEZIER)
