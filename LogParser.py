@@ -170,11 +170,12 @@ def getMachineInteractions (act, trial=getLatestTrial()):
 	actions = {}
 	for a in data:
 		if (len(a[5]) > 0) == act:	#True for actions, False for errors
+			# print a	#print the exact action/error
 			actions.setdefault(a[1], 0)
 			actions[a[1]] += 1
 			if act and 'enable' in a[5][0]:	#don't count the 'enable' actions
 				actions[a[1]] -= 1
-	print actions
+	return actions
 
 def getMachineProximity (trial=getLatestTrial()):
 	data = loadLogFile('proximity', trial)
@@ -185,8 +186,54 @@ def getMachineProximity (trial=getLatestTrial()):
 		if p[3] > 0:	#count only when entering a machine area
 			stations.setdefault(p[1], 0)
 			stations[p[1]] += 1
-	print stations
-			
+	return stations
+
+def getDuration (trial=getLatestTrial()):
+	data = loadLogFile('state', trial)
+	return data[-1:][0]
+
+def getScore (trial=getLatestTrial()):
+	total = 0
+	# get points based on machine state changes
+	timeStamp = []
+	data = loadLogFile('state', trial)
+	for d in data:
+		actions = d[5]
+		for a in actions:
+			if ('score' in a) and not (d[0] in timeStamp):
+				timeStamp.append(d[0])
+				total += int(a.partition('[')[2].partition(']')[0])
+				print d #a.partition('[')[2].partition(']')[0]
+	#subtract the last pitcher's points, but check if both pitchers were clicked in less than 8 secs
+	return total*160 - 15*80
+	
+def getFirstAction (trial=getLatestTrial()):
+	data = loadLogFile('state', trial)
+	for d in data:
+		newState = d[4]
+		if newState == 'BOILER/LOADED':
+			boilerTime = d[0]
+		elif newState == 'LAVALR/BELT-ON':
+			beltTime = d[0]
+	return str(boilerTime)+'\t'+str(beltTime)
+		
+def parseTrials (func, arg=None, desc='', filter=''):
+	trials = os.listdir(viz.res.getPublishedPath()+'study/')
+	trials = [t for t in trials if t[:5+len(filter)]=='Trial'+filter]
+	for t in trials:
+		if arg != None:
+			data = func(arg, trial=t[5:])
+		else:
+			data = func(trial=t[5:])
+		# print all the values by subject (if dictionary)
+		if type(data) == type(dict()):
+			for k,n in data.iteritems():
+				print desc, t[5:]+str(k)+':\t', n
+		elif type(data) in [type(int()), type(str())]:
+			print desc, t[5:]+':\t', data
+		else:	#...or by group (if list or tuple)
+			print desc, t[5:]+':\t', data[0]
+	
 if __name__ == '__main__':
 	
 	viz.go()

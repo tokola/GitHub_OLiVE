@@ -34,7 +34,7 @@ MACHINERY = {0: ('waterPipe', 'wheelBarrow'),
 			 5: ('boiler', 'engine', 'lavalR', 'millR', 'pressR', 'pumpR', 'loader', 'lavalL', 'millL', 'pumpL', 'pressL', 'oilPump', 'scale')}
 EYEHEIGHT = 1.75
 DEVICE = 'XBOX'
-LANG = 'GR'
+LANG = ''
 
 #############################################################
 ### LOAD DEPENDENCIES FROM DISK AND CREATE PERSISTENT EXE ###
